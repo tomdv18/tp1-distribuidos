@@ -1,0 +1,35 @@
+version: '3'
+services:
+  rabbitmq:
+    build:
+      context: ./rabbitmq
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15672:15672
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: gateway.dockerfile
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    links: 
+      - rabbitmq
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./movies_metadata.csv:/app/movies_metadata.csv
+
+  filter1:
+    build:
+      context: ./filter
+      dockerfile: filter.dockerfile
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    links: 
+      - rabbitmq
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
