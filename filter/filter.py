@@ -9,7 +9,7 @@ queue_manager = QueueManagerConsumer()
 queue_manager.declare_exchange(exchange_name='gateway_metadata', exchange_type='direct')
 queue_name = queue_manager.queue_declare(queue_name='')
 
-binds = ["3", "-1"]
+binds = ["1" , "3", "6", "9", "-1"]
 
 for bind in binds:
     queue_manager.queue_bind(
@@ -23,8 +23,12 @@ def callback(ch, method, properties, body):
         queue_manager.close_connection()
         return
     print(f" [x] {method.routing_key}:{body}")
+    body_split = body.decode().split("--")
+    if "spain" in body_split[3].lower() and "argentina" in body_split[3].lower():
+        print(f" [x] Pelicula con produccion argentina y española: {body_split[0]} - {body_split[5]}")
+        # Aquí puedes agregar la lógica para filtrar y procesar los mensajes que cumplan con tus criterios
 
-    
+
 
 
 queue_manager.consume_messages(
