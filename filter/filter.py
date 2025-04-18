@@ -1,29 +1,26 @@
-import pika
 import sys
+from queue_manager.queue_manager import QueueManagerConsumer
 
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq'))
-channel = connection.channel()
 
-channel.exchange_declare(exchange='gateway_metadata', exchange_type='direct')
+queue_manager = QueueManagerConsumer()
 
-result = channel.queue_declare(queue='', exclusive=True)
-queue_name = result.method.queue
+queue_manager.declare_exchange(exchange_name='gateway_metadata', exchange_type='direct')
+queue_name = queue_manager.queue_declare(queue_name='')
 
 binds = ["3"]
 
 for bind in binds:
-    channel.queue_bind(
-        exchange='gateway_metadata', queue=queue_name, routing_key=bind)
-
-print(' [*] Waiting for logs. To exit press CTRL+C')
-
+    queue_manager.queue_bind(
+        exchange_name='gateway_metadata', queue_name=queue_name, routing_key=bind)
+    print(f" [*] Waiting for logs. To exit press CTRL+C: {bind}")
 
 def callback(ch, method, properties, body):
     print(f" [x] {method.routing_key}:{body}: {properties.headers}")
 
 
-channel.basic_consume(
-    queue=queue_name, on_message_callback=callback, auto_ack=True)
+queue_manager.consume_messages(
+    queue_name=queue_name,
+    callback=callback
+)
 
-channel.start_consuming()
+queue_manager.start_consuming()

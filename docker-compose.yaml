@@ -1,4 +1,3 @@
-version: '3'
 services:
   rabbitmq:
     build:
@@ -6,14 +5,20 @@ services:
       dockerfile: rabbitmq.dockerfile
     ports:
       - 15672:15672
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   gateway:
     build:
-      context: ./gateway
-      dockerfile: gateway.dockerfile
+      context: .
+      dockerfile: gateway/gateway.dockerfile
     restart: on-failure
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     links: 
       - rabbitmq
     environment:
@@ -23,11 +28,11 @@ services:
 
   filter1:
     build:
-      context: ./filter
-      dockerfile: filter.dockerfile
+      context: .
+      dockerfile: filter/filter.dockerfile
     restart: on-failure
     depends_on:
-      - rabbitmq
+      - gateway
     links: 
       - rabbitmq
     environment:

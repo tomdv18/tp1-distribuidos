@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import pika
 import csv
+from queue_manager.queue_manager import QueueManagerPublisher
 
 movies = []
 
@@ -12,16 +12,13 @@ with open('movies_metadata.csv', encoding='utf-8') as f:
         row_str = ",".join(row)
         movies.append((movie_id, row_str))
 
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='rabbitmq'))
-channel = connection.channel()
-
-channel.exchange_declare(exchange='gateway_metadata', exchange_type='direct')
+queue_manager = QueueManagerPublisher()  
+queue_manager.declare_exchange('gateway_metadata', 'direct')
 
 for movie in movies:
     movie_id, row = movie
-    channel.basic_publish(
-    exchange='gateway_metadata', routing_key=movie_id[-1], body=row)
-    print(f" [x] Sending {movie_id}")
+    queue_manager.publish_message(
+        exchange_name='gateway_metadata', routing_key=movie_id[-1], message=row)
+    print(f" [x] Sending {movie_id} with key {movie_id[-1]}")
 
-connection.close()
+queue_manager.close_connection()
