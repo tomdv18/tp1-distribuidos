@@ -19,12 +19,16 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      filter1:
+        condition: service_started
+      
     links: 
       - rabbitmq
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./movies_metadata.csv:/app/movies_metadata.csv
+      #- ./movies_metadata.csv:/app/movies_metadata.csv
+      - ./movies_2000_lines.csv:/app/movies_metadata.csv
 
   filter1:
     build:
@@ -32,7 +36,8 @@ services:
       dockerfile: filter/filter.dockerfile
     restart: on-failure
     depends_on:
-      - gateway
+      rabbitmq:
+        condition: service_healthy
     links: 
       - rabbitmq
     environment:
