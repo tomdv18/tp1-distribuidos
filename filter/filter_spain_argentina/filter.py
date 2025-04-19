@@ -1,4 +1,3 @@
-import sys
 from queue_manager.queue_manager import QueueManagerConsumer, QueueManagerPublisher
 
 END = "EOF"

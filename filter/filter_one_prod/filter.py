@@ -3,17 +3,17 @@ from queue_manager.queue_manager import QueueManagerConsumer, QueueManagerPublis
 END = "EOF"
 SEPARATOR = "-*-"
 queue_manager_input = QueueManagerConsumer()
-queue_manager_input.declare_exchange(exchange_name='filter_spain_argentina', exchange_type='direct')
+queue_manager_input.declare_exchange(exchange_name='gateway_metadata', exchange_type='direct')
 queue_name = queue_manager_input.queue_declare(queue_name='')
 
-queue_manager_output = QueueManagerPublisher()
-queue_manager_output.queue_declare(queue_name='results', exclusive=False)
+queue_manager_output = QueueManagerPublisher()  
+queue_manager_output.declare_exchange('filter_one_prod', 'direct')
 
 binds = [str(i) for i in range(10)] + ["-1"]
 
 for bind in binds:
     queue_manager_input.queue_bind(
-        exchange_name='filter_spain_argentina', queue_name=queue_name, routing_key=bind)
+        exchange_name='gateway_metadata', queue_name=queue_name, routing_key=bind)
     print(f" [*] Waiting for logs. To exit press CTRL+C: {bind}")
 
 def callback(_ch, method, _properties, body):
@@ -21,23 +21,25 @@ def callback(_ch, method, _properties, body):
         print(" [*] Received EOF for all movies, exiting...")
         queue_manager_input.stop_consuming()
         queue_manager_input.close_connection()
-        queue_manager_output.publish_message(exchange_name='', routing_key='results', message=END)
+        queue_manager_output.publish_message(exchange_name='filter_one_prod', routing_key="-1", message=END)
         queue_manager_output.close_connection()
         return
     
     body_split = body.decode().split(SEPARATOR)
-    realease_date = body_split[3]
-    print(f" [x] Received {body.decode()}")
-    if int(realease_date.split("-")[0]) >= 2000:
+    if body_split[4].count(',') == 1:
+        try:
+            country_name = body_split[4].split("'name': '")[1].split("'")[0]
+        except IndexError:
+            country_name = body_split[4].split("'name': \"")[1].split('"')[0]
+            
+
         movie_id = body_split[0]
-        genres = body_split[2]
-        title = body_split[1]
-        row_str = f"Query 1 -> ID: {movie_id} - Title: {title} - Genres: {genres}"
-        queue_manager_output.publish_message(
-            exchange_name='', routing_key='results', message=row_str)
+        budget = body_split[2]
+        row_str = f"{country_name}{SEPARATOR}{budget}"
+        queue_manager_output.publish_message(exchange_name='filter_one_prod', routing_key=str(movie_id[-1]), message=row_str)
+        
 
 
-                 
 queue_manager_input.consume_messages(
     queue_name=queue_name,
     callback=callback

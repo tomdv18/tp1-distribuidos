@@ -10,6 +10,8 @@ queue_manager_metadata.declare_exchange('gateway_metadata', 'direct')
 queue_manager_results = QueueManagerConsumer()
 queue_manager_results.queue_declare(queue_name='results', exclusive=False)
 
+eof_count = 0
+EOF_WAITING = 2
 
 with open('movies_metadata.csv', encoding='utf-8') as f:
     reader = csv.reader(f)
@@ -27,6 +29,8 @@ with open('movies_metadata.csv', encoding='utf-8') as f:
         realease_date = row[14]
         revenue = row[15]
         title = row[20]
+        if not movie_id or not budget or not genres or not overview or not production_countries or not realease_date or not revenue or not title:
+            continue
         
  
         row_str = f"{movie_id}{SEPARATOR}{genres}{SEPARATOR}{budget}{SEPARATOR}{overview}{SEPARATOR}{production_countries}{SEPARATOR}{realease_date}{SEPARATOR}{revenue}{SEPARATOR}{title}"
@@ -41,11 +45,14 @@ queue_manager_metadata.publish_message(
 queue_manager_metadata.close_connection()
 
 def callback(ch, method, properties, body):
+    global eof_count
     if body.decode() == END:
         print(" [*] Received EOF for all movies, exiting...")
-        queue_manager_results.stop_consuming()
-        queue_manager_results.close_connection()
-        return
+        eof_count += 1
+        if eof_count == EOF_WAITING:
+            queue_manager_results.stop_consuming()
+            queue_manager_results.close_connection()
+            return
     
     print(f" [x] Received {body.decode()}")
 
