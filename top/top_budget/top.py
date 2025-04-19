@@ -1,8 +1,8 @@
 import heapq
 from queue_manager.queue_manager import QueueManagerConsumer, QueueManagerPublisher
+import constants
 
-END = "EOF"
-SEPARATOR = "-*-"
+
 queue_manager_input= QueueManagerConsumer()
 queue_manager_input.queue_declare(queue_name='group_by_country', exclusive=False)
 
@@ -13,7 +13,7 @@ queue_manager_output.queue_declare(queue_name='results', exclusive=False)
 top_budgets = []
 
 def callback(_ch, method, _properties, body):
-    if body.decode() == END:
+    if body.decode() == constants.END:
         print(" [*] Received EOF for all movies, exiting...")
         queue_manager_input.stop_consuming()
         queue_manager_input.close_connection()
@@ -22,11 +22,11 @@ def callback(_ch, method, _properties, body):
             row_str = f"Query 2 -> {country} {budget}"
             queue_manager_output.publish_message(exchange_name='', routing_key='results', message=row_str)
         
-        queue_manager_output.publish_message(exchange_name='', routing_key='results', message=END)
+        queue_manager_output.publish_message(exchange_name='', routing_key='results', message=constants.END)
         queue_manager_output.close_connection()
         return
     
-    body_split = body.decode().split(SEPARATOR)
+    body_split = body.decode().split(constants.SEPARATOR)
     country_name = body_split[0]
     budget = int(body_split[1])
 

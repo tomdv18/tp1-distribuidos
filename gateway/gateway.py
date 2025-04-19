@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import csv
 from queue_manager.queue_manager import QueueManagerPublisher, QueueManagerConsumer
+import constants
 
-END = "EOF"
-SEPARATOR = "-*-"
+
 queue_manager_metadata = QueueManagerPublisher()  
 queue_manager_metadata.declare_exchange('gateway_metadata', 'direct')
 
@@ -33,7 +33,7 @@ with open('movies_metadata.csv', encoding='utf-8') as f:
             continue
         
  
-        row_str = f"{movie_id}{SEPARATOR}{genres}{SEPARATOR}{budget}{SEPARATOR}{overview}{SEPARATOR}{production_countries}{SEPARATOR}{realease_date}{SEPARATOR}{revenue}{SEPARATOR}{title}"
+        row_str = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{production_countries}{constants.SEPARATOR}{realease_date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}"
         queue_manager_metadata.publish_message(
         exchange_name='gateway_metadata', routing_key=str(movie_id[-1]), message=row_str)
         print(f" [x] Sending {movie_id} with key {movie_id[-1]}")
@@ -41,13 +41,13 @@ with open('movies_metadata.csv', encoding='utf-8') as f:
 
 print(" [x] Sending EOF message")
 queue_manager_metadata.publish_message(
-    exchange_name='gateway_metadata', routing_key="-1", message=END)
+    exchange_name='gateway_metadata', routing_key="-1", message=constants.END)
 queue_manager_metadata.close_connection()
 
 def callback(ch, method, properties, body):
     global eof_count
-    if body.decode() == END:
-        print(" [*] Received EOF for all movies, exiting...")
+    if body.decode() == constants.END:
+        print(f" [*] Received {body.decode()} for all movies, exiting...")
         eof_count += 1
         if eof_count == EOF_WAITING:
             queue_manager_results.stop_consuming()

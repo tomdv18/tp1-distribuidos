@@ -1,7 +1,6 @@
 from queue_manager.queue_manager import QueueManagerConsumer, QueueManagerPublisher
+import constants
 
-END = "EOF"
-SEPARATOR = "-*-"
 queue_manager_input = QueueManagerConsumer()
 queue_manager_input.declare_exchange(exchange_name='filter_one_prod', exchange_type='direct')
 queue_name = queue_manager_input.queue_declare(queue_name='')
@@ -19,18 +18,18 @@ for bind in binds:
 results = {}
 
 def callback(_ch, method, _properties, body):
-    if method.routing_key == "-1" and body.decode() == END:  # La segunda de las condiciones puede ser redundante
+    if method.routing_key == "-1" and body.decode() == constants.END:  # La segunda de las condiciones puede ser redundante
         print(" [*] Received EOF for all movies, exiting...")
         queue_manager_input.stop_consuming()
         queue_manager_input.close_connection()
         for country, budget in results.items():
-            row_str = f"{country}{SEPARATOR}{budget}"
+            row_str = f"{country}{constants.SEPARATOR}{budget}"
             queue_manager_output.publish_message(exchange_name='', routing_key='group_by_country', message=row_str)
-        queue_manager_output.publish_message(exchange_name='', routing_key='group_by_country', message=END)
+        queue_manager_output.publish_message(exchange_name='', routing_key='group_by_country', message=constants.END)
         queue_manager_output.close_connection()
         return
     
-    body_split = body.decode().split(SEPARATOR)
+    body_split = body.decode().split(constants.SEPARATOR)
     country_name = body_split[0]
     budget = body_split[1]
     if country_name not in results:
