@@ -27,13 +27,26 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      #- ./movies_metadata.csv:/app/movies_metadata.csv
-      - ./movies_2000_lines.csv:/app/movies_metadata.csv
+      - ./movies_metadata.csv:/app/movies_metadata.csv
 
   filter1:
     build:
       context: .
-      dockerfile: filter/filter.dockerfile
+      dockerfile: filter/filter_spain_argentina/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    links: 
+      - rabbitmq
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+  
+  filter2:
+    build:
+      context: .
+      dockerfile: filter/filter_years_2000/filter.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:

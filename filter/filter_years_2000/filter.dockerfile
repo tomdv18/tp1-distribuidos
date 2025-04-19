@@ -1,6 +1,6 @@
 FROM base:0.0.1
 
-COPY filter/filter.py /app/filter.py
+COPY filter/filter_years_2000/filter.py /app/filter.py
 COPY queue_manager /app/queue_manager
 WORKDIR /app
 CMD ["python3", "/app/filter.py"]
