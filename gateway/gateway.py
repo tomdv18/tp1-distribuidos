@@ -3,7 +3,6 @@ import csv
 from queue_manager.queue_manager import QueueManagerPublisher, QueueManagerConsumer
 import constants
 
-
 queue_manager_metadata = QueueManagerPublisher()  
 queue_manager_metadata.declare_exchange('gateway_metadata', 'direct')
 
@@ -17,6 +16,7 @@ eof_count = 0
 EOF_WAITING = 1
 
 with open('movies_metadata.csv', encoding='utf-8') as f:
+    metadata_sent = 0
     reader = csv.reader(f)
     next(reader) 
     for row in reader:
@@ -39,15 +39,20 @@ with open('movies_metadata.csv', encoding='utf-8') as f:
         row_str = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{production_countries}{constants.SEPARATOR}{realease_date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}"
         queue_manager_metadata.publish_message(
         exchange_name='gateway_metadata', routing_key=str(movie_id[-1]), message=row_str)
-        print(f" [METADATA] Sending {movie_id} with key {movie_id[-1]}")
+        metadata_sent += 1
+        if metadata_sent%1000 == 0:
+            print(f" [METADATA] Sent {metadata_sent} messages")
+        #print(f" [METADATA] Sending {movie_id} with key {movie_id[-1]}")
 
 print(" [x] Sending EOF message from metadata")
-queue_manager_metadata.publish_message(
-    exchange_name='gateway_metadata', routing_key="-1", message=constants.END)
+for i in range(10):
+    queue_manager_metadata.publish_message(
+        exchange_name='gateway_metadata', routing_key=str(i), message=constants.END)
 queue_manager_metadata.close_connection()
 
 
 with open('ratings.csv', encoding='utf-8') as f:
+    credits_sent = 0
     reader = csv.reader(f)
     next(reader) 
     for row in reader:
@@ -64,11 +69,14 @@ with open('ratings.csv', encoding='utf-8') as f:
         row_str = f"{movie_id}{constants.SEPARATOR}{rating}"
         queue_manager_ratings.publish_message(
         exchange_name='gateway_ratings', routing_key=str(movie_id[-1]), message=row_str)
-        print(f" [RATINGS] Sending {movie_id} with key {movie_id[-1]}")
+        credits_sent += 1
+        if credits_sent%1000 == 0:
+            print(f" [CREDITS] Sent {credits_sent} messages")
 
 print(" [x] Sending EOF message from ratings")
-queue_manager_ratings.publish_message(
-    exchange_name='gateway_ratings', routing_key="-1", message=constants.END)
+for i in range(10):
+    queue_manager_ratings.publish_message(
+        exchange_name='gateway_ratings', routing_key=str(i), message=constants.END)
 queue_manager_ratings.close_connection()
 
 def callback(ch, method, properties, body):

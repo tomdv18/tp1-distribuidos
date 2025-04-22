@@ -12,6 +12,8 @@ top_rating = None
 worst_rating = None
 
 def callback(_ch, method, _properties, body):
+    global top_rating
+    global worst_rating
     if body.decode() == constants.END:
         print(" [*] Received EOF for all movies, exiting...")
         queue_manager_input.stop_consuming()
