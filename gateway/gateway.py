@@ -10,7 +10,10 @@ queue_manager_ratings = QueueManagerPublisher()
 queue_manager_ratings.declare_exchange('gateway_ratings', 'direct')
 
 queue_manager_results = QueueManagerConsumer()
-queue_manager_results.queue_declare(queue_name='results', exclusive=False)
+queue_manager_results.declare_exchange(exchange_name='results', exchange_type='direct')
+queue_name = queue_manager_results.queue_declare(queue_name='')
+queue_manager_results.queue_bind(
+    exchange_name='results', queue_name=queue_name, routing_key='results')
 
 eof_count = 0
 EOF_WAITING = 1
@@ -70,7 +73,7 @@ with open('ratings.csv', encoding='utf-8') as f:
         queue_manager_ratings.publish_message(
         exchange_name='gateway_ratings', routing_key=str(movie_id[-1]), message=row_str)
         credits_sent += 1
-        if credits_sent%1000 == 0:
+        if credits_sent%1000000 == 0:
             print(f" [CREDITS] Sent {credits_sent} messages")
 
 print(" [x] Sending EOF message from ratings")
@@ -92,7 +95,7 @@ def callback(ch, method, properties, body):
     print(f" [x] Received {body.decode()}")
 
 queue_manager_results.consume_messages(
-    queue_name='results',
+    queue_name,
     callback=callback
 )
 queue_manager_results.start_consuming()

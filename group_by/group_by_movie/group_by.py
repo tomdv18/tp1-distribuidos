@@ -7,7 +7,7 @@ queue_manager_input.declare_exchange(exchange_name='join_ratings', exchange_type
 queue_name = queue_manager_input.queue_declare(queue_name='')
 
 queue_manager_output = QueueManagerPublisher()
-queue_manager_output.queue_declare(queue_name='group_by_movie', exclusive=False)
+queue_manager_output.declare_exchange('group_by_movie', 'direct')
 
 binds_env = os.getenv("BINDS", "")
 binds = (binds_env.split(",") if binds_env else [])
@@ -30,8 +30,9 @@ def callback(_ch, method, _properties, body):
             queue_manager_input.close_connection()
             for key, (total_rating, count) in results.items():
                 row_str = f"{key}{constants.SEPARATOR}{total_rating / count}"
-                queue_manager_output.publish_message(exchange_name='', routing_key='group_by_movie', message=row_str)
-            queue_manager_output.publish_message(exchange_name='', routing_key='group_by_movie', message=constants.END)
+                queue_manager_output.publish_message(exchange_name='group_by_movie', routing_key=key.split(constants.SEPARATOR)[0][-1], message=row_str)
+            for bind in binds:
+                queue_manager_output.publish_message(exchange_name='group_by_movie', routing_key=bind, message=constants.END)
             queue_manager_output.close_connection()
             return
     else:
