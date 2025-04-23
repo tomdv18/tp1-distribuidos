@@ -3,7 +3,7 @@ import constants
 import os
 
 queue_manager_input= QueueManagerConsumer()
-queue_manager_input.declare_exchange(exchange_name='group_by_movie', exchange_type='direct')
+queue_manager_input.declare_exchange(exchange_name='join_ratings', exchange_type='direct')
 queue_name = queue_manager_input.queue_declare(queue_name='')
 
 queue_manager_output = QueueManagerPublisher()
@@ -18,7 +18,7 @@ ended = 0
 
 for bind in binds:
     queue_manager_input.queue_bind(
-        exchange_name='group_by_movie', queue_name=queue_name, routing_key=bind)
+        exchange_name='join_ratings', queue_name=queue_name, routing_key=bind)
     print(f" [*] Waiting for logs. To exit press CTRL+C: {bind}")
 
 def callback(_ch, method, _properties, body):

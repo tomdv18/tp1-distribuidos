@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import csv
+import ast
+import json
 from queue_manager.queue_manager import QueueManagerPublisher, QueueManagerConsumer
 import constants
 
@@ -8,6 +10,9 @@ queue_manager_metadata.declare_exchange('gateway_metadata', 'direct')
 
 queue_manager_ratings = QueueManagerPublisher()  
 queue_manager_ratings.declare_exchange('gateway_ratings', 'direct')
+
+queue_manager_credits = QueueManagerPublisher()  
+queue_manager_credits.declare_exchange('gateway_credits', 'direct')
 
 queue_manager_results = QueueManagerConsumer()
 queue_manager_results.declare_exchange(exchange_name='results', exchange_type='direct')
@@ -43,7 +48,7 @@ with open('movies_metadata.csv', encoding='utf-8') as f:
         queue_manager_metadata.publish_message(
         exchange_name='gateway_metadata', routing_key=str(movie_id[-1]), message=row_str)
         metadata_sent += 1
-        if metadata_sent%1000 == 0:
+        if metadata_sent%10000 == 0:
             print(f" [METADATA] Sent {metadata_sent} messages")
         #print(f" [METADATA] Sending {movie_id} with key {movie_id[-1]}")
 
@@ -53,6 +58,35 @@ for i in range(10):
         exchange_name='gateway_metadata', routing_key=str(i), message=constants.END)
 queue_manager_metadata.close_connection()
 
+with open('credits.csv', encoding='utf-8') as f:
+    lines = f.readlines()
+    lines.pop(0)
+    credits_sent = 0
+    reader = csv.DictReader(lines, fieldnames=['cast', 'crew', 'id'])
+    
+    for row in reader:
+        cast = ast.literal_eval(row['cast'])
+        movie_id = row['id']
+
+        for actor in cast:
+            row_str = f"{movie_id}{constants.SEPARATOR}{actor["id"]}{constants.SEPARATOR}{actor["name"]}"
+            queue_manager_credits.publish_message(
+            exchange_name='gateway_credits', routing_key=str(movie_id[-1]), message=row_str)
+            credits_sent += 1
+            if credits_sent%100000 == 0:
+                print(f" [CREDITS] Sent {credits_sent} messages")
+
+print(" [x] Sending EOF message from credits")
+for i in range(10):
+    queue_manager_credits.publish_message(
+        exchange_name='gateway_credits', routing_key=str(i), message=constants.END)
+queue_manager_credits.close_connection()
+
+
+
+
+
+    
 
 with open('ratings.csv', encoding='utf-8') as f:
     credits_sent = 0
