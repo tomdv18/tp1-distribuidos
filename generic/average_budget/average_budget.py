@@ -5,8 +5,8 @@ from generic import Generic
 
 class AverageBudget(Generic):
     def __init__(self):
-        results = {}
-        cant = {}
+        self.results = {}
+        self.cant = {}
         super().__init__()
 
     def callback(self, ch, method, _properties, body):

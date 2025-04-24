@@ -11,10 +11,10 @@ BATCH_TIMEOUT = float(os.getenv("BATCH_TIMEOUT", 10.0))
 
 class OverviewProcessor(Generic):
     def __init__(self):
-        pipeline = self.init_model()
-        message_counter = 0
-        batch = []
-        last_time = time.time()
+        self.pipeline = self.init_model()
+        self.message_counter = 0
+        self.batch = []
+        self.last_time = time.time()
         super().__init__()
         print(f"Total messages sent: {self.message_counter}")
 
@@ -38,7 +38,7 @@ class OverviewProcessor(Generic):
 
         for method, body in batch:
             try:
-                body_split = body.decode().split(constants.SEPARATOR)
+                body_split = body.split(constants.SEPARATOR)
                 movie_id, budget, revenue, overview, title = body_split
 
                 tokenized_text = pipeline.tokenizer(overview, padding=False, truncation=False, return_tensors="pt")
@@ -79,27 +79,27 @@ class OverviewProcessor(Generic):
                 print("Received EOF for all movies")
                 if self.batch:
                     self.message_counter = self.process_message_batch(self.batch, self.pipeline, self.message_counter)
-                self.node_instance.send_end_message_to_all()
+                self.node_instance.send_end_message_to_all_binds()
                 self.node_instance.stop_consuming_and_close_connection(0)
                 self.node_instance.close_publisher_connection()
                 
         else:
+
             body_split = body.decode().split(constants.SEPARATOR)
-            if len(body_split) != 5:
-                print("Skipping invalid message: Incorrect format")
-                print(body.decode())
-                return
+            budget = body_split[2]
+            revenue = body_split[6]
+            if float(budget) != 0 and float(revenue) != 0:
+                movie_id = body_split[0]
+                overview = body_split[3]
+                title = body_split[7]
 
-            _, budget, revenue, _, _ = body_split
+                body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}"
+                self.batch.append((method, body))
 
-            if int(budget) == 0 or float(revenue) == 0.0:
-                return
-            self.batch.append((method, body))
-
-            if len(self.batch) >= BATCH_SIZE or (time.time() - self.last_time >= BATCH_TIMEOUT):
-                self.message_counter = self.process_message_batch(self.batch, self.pipeline, self.message_counter)
-                self.batch = []
-                self.last_time = time.time()
+                if len(self.batch) >= BATCH_SIZE or (time.time() - self.last_time >= BATCH_TIMEOUT):
+                    self.message_counter = self.process_message_batch(self.batch, self.pipeline, self.message_counter)
+                    self.batch = []
+                    self.last_time = time.time()
         
 
 if __name__ == '__main__':

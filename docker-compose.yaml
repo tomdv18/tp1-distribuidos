@@ -19,10 +19,20 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+      filter_spain_argentina_1:
+        condition: service_started
+      filter_spain_argentina_2:
+        condition: service_started
+      filter_one_prod_1:
+        condition: service_started
+      filter_one_prod_2:
+        condition: service_started
       filter_argentina_1:
         condition: service_started
       filter_argentina_2:
         condition: service_started
+      overview_1:
+        condition: service_healthy
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
