@@ -1,7 +1,6 @@
 import constants
 import node
 import os
-from filter_function import filter_function
 
 class Filter:
     def __init__(self):
@@ -27,12 +26,15 @@ class Filter:
                 self.node_instance.close_publisher_connection()
         else:
             body_split = body.decode().split(constants.SEPARATOR)
-            routing_key, row_str = filter_function(body_split)
+            routing_key, row_str = self.filter(body_split)
             if routing_key and row_str:
                 self.node_instance.send_message(
                     routing_key=routing_key,
                     message=row_str
                 )
+
+    def filter(self, body_split):
+        raise NotImplementedError("Subclass responsibility")
 
 if __name__ == '__main__':
     Filter()

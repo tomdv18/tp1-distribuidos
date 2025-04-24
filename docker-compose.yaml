@@ -33,7 +33,7 @@ services:
   filter_argentina_1:
     build:
       context: .
-      dockerfile: filter/filter.dockerfile
+      dockerfile: filter/filter_argentina/filter.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
@@ -48,13 +48,11 @@ services:
       - BINDS=0,1,2,3,4
       - CONSUMER_EXCHANGE=gateway_metadata
       - PUBLISHER_EXCHANGE=filter_argentina
-    volumes:
-      - ./filter/filter_argentina/filter_function.py:/app/filter_function.py
 
   filter_argentina_2:
     build:
       context: .
-      dockerfile: filter/filter.dockerfile
+      dockerfile: filter/filter_argentina/filter.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
@@ -69,13 +67,11 @@ services:
       - BINDS=5,6,7,8,9
       - CONSUMER_EXCHANGE=gateway_metadata
       - PUBLISHER_EXCHANGE=filter_argentina
-    volumes:
-      - ./filter/filter_argentina/filter_function.py:/app/filter_function.py
 
   filter_years_2000_argentina_1:
     build:
       context: .
-      dockerfile: filter/filter.dockerfile
+      dockerfile: filter/filter_years_2000_argentina/filter.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
@@ -83,6 +79,10 @@ services:
       join_ratings_1:
         condition: service_started
       join_ratings_2:
+        condition: service_started
+      join_credits_1:
+        condition: service_started
+      join_credits_2:
         condition: service_started
     environment:
       - PYTHONUNBUFFERED=1
@@ -90,13 +90,11 @@ services:
       - BINDS=0,1,2,3,4
       - CONSUMER_EXCHANGE=filter_argentina
       - PUBLISHER_EXCHANGE=filter_years_2000_argentina
-    volumes:
-      - ./filter/filter_years_2000_argentina/filter_function.py:/app/filter_function.py
     
   filter_years_2000_argentina_2:
     build:
       context: .
-      dockerfile: filter/filter.dockerfile
+      dockerfile: filter/filter_years_2000_argentina/filter.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
@@ -105,42 +103,80 @@ services:
         condition: service_started
       join_ratings_2:
         condition: service_started
+      join_credits_1:
+        condition: service_started
+      join_credits_2:
+        condition: service_started
     environment:
       - PYTHONUNBUFFERED=1
       - FILTER_ID=1
       - BINDS=5,6,7,8,9
       - CONSUMER_EXCHANGE=filter_argentina
       - PUBLISHER_EXCHANGE=filter_years_2000_argentina
-    volumes:
-      - ./filter/filter_years_2000_argentina/filter_function.py:/app/filter_function.py
 
   join_ratings_1:
     build:
       context: .
-      dockerfile: join/join.dockerfile
+      dockerfile: join/join_ratings/join.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
         condition: service_healthy
-      top_rating_1:
+      top_rating:
         condition: service_started
     environment:
       - PYTHONUNBUFFERED=1
       - FILTER_ID=1
       - BINDS=0,1,2,3,4
       - CONSUMER_EXCHANGE_METADATA=filter_years_2000_argentina
-      - CONSUMER_EXCHANGE_JOINED=gateway_credits
+      - CONSUMER_EXCHANGE_JOINED=gateway_ratings
       - PUBLISHER_EXCHANGE=join_ratings
 
   join_ratings_2:
     build:
       context: .
-      dockerfile: join/join.dockerfile
+      dockerfile: join/join_ratings/join.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
         condition: service_healthy
-      top_rating_1:
+      top_rating:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=5,6,7,8,9
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_argentina
+      - CONSUMER_EXCHANGE_JOINED=gateway_ratings
+      - PUBLISHER_EXCHANGE=join_ratings
+
+  join_credits_1:
+    build:
+      context: .
+      dockerfile: join/join_credits/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_actors:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=0,1,2,3,4
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_argentina
+      - CONSUMER_EXCHANGE_JOINED=gateway_credits
+      - PUBLISHER_EXCHANGE=join_credits
+
+  join_credits_2:
+    build:
+      context: .
+      dockerfile: join/join_credits/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_actors:
         condition: service_started
     environment:
       - PYTHONUNBUFFERED=1
@@ -148,12 +184,12 @@ services:
       - BINDS=5,6,7,8,9
       - CONSUMER_EXCHANGE_METADATA=filter_years_2000_argentina
       - CONSUMER_EXCHANGE_JOINED=gateway_credits
-      - PUBLISHER_EXCHANGE=join_ratings
+      - PUBLISHER_EXCHANGE=join_credits
 
-  top_rating_1:
+  top_rating:
     build:
       context: .
-      dockerfile: top/top.dockerfile
+      dockerfile: generic/top_rating/generic.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
@@ -163,4 +199,19 @@ services:
       - FILTER_ID=1
       - BINDS=0,1,2,3,4,5,6,7,8,9
       - CONSUMER_EXCHANGE=join_ratings
+      - PUBLISHER_EXCHANGE=results
+
+  top_actors:
+    build:
+      context: .
+      dockerfile: generic/top_actors/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=0,1,2,3,4,5,6,7,8,9
+      - CONSUMER_EXCHANGE=join_credits
       - PUBLISHER_EXCHANGE=results
