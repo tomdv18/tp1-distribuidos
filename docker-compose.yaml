@@ -11,6 +11,17 @@ services:
       timeout: 5s
       retries: 5
 
+  client:
+    build:
+      context: .
+      dockerfile: client/client.dockerfile
+    depends_on:
+      - gateway
+    volumes:
+      - ./client/files:/app/files  
+    environment:
+      - PYTHONUNBUFFERED=1
+
   gateway:
     build:
       context: .
@@ -35,10 +46,7 @@ services:
         condition: service_healthy
     environment:
       - PYTHONUNBUFFERED=1
-    volumes:
-      - ./movies_metadata.csv:/app/movies_metadata.csv
-      - ./ratings.csv:/app/ratings.csv
-      - ./credits.csv:/app/credits.csv
+
   filter_spain_argentina_1:
     build:
       context: .
