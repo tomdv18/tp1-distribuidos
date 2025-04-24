@@ -18,10 +18,11 @@ class Filter:
     def callback(self, _ch, method, _properties, body):
         if body.decode() == constants.END:
             print(f" [*] Received EOF for bind {method.routing_key}")
-            self.node_instance.send_end_message(method.routing_key)
+            self.end_when_bind_ends(method.routing_key)
             self.ended += 1
             if self.ended == self.node_instance.total_binds():
                 print(" [*] Received EOF for all movies, exiting...")
+                self.end_when_all_binds_end()
                 self.node_instance.stop_consuming_and_close_connection(0)
                 self.node_instance.close_publisher_connection()
         else:
@@ -32,6 +33,12 @@ class Filter:
                     routing_key=routing_key,
                     message=row_str
                 )
+
+    def end_when_bind_ends(self, bind):
+        self.node_instance.send_end_message(bind)
+
+    def end_when_all_binds_end(self):
+        pass
 
     def filter(self, body_split):
         raise NotImplementedError("Subclass responsibility")

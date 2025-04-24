@@ -21,7 +21,7 @@ queue_manager_results.queue_bind(
     exchange_name='results', queue_name=queue_name, routing_key='results')
 
 eof_count = 0
-EOF_WAITING = 2
+EOF_WAITING = 5
 
 with open('movies_metadata.csv', encoding='utf-8') as f:
     metadata_sent = 0

@@ -12,7 +12,6 @@ class TopRating(Generic):
     def callback(self, ch, method, _properties, body):
         if body.decode() == constants.END:
             print(f" [*] Received EOF for bind {method.routing_key}")
-            self.node_instance.send_end_message(method.routing_key)
             self.ended += 1
             if self.ended == self.node_instance.total_binds():
                 print(" [*] Received EOF for all, exiting...")

@@ -29,6 +29,122 @@ services:
       - ./movies_metadata.csv:/app/movies_metadata.csv
       - ./ratings_39999_lines.csv:/app/ratings.csv
       - ./credits.csv:/app/credits.csv
+  filter_spain_argentina_1:
+    build:
+      context: .
+      dockerfile: filter/filter_spain_argentina/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      filter_years_2000_q1_1:
+        condition: service_started
+      filter_years_2000_q1_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=0,1,2,3,4
+      - CONSUMER_EXCHANGE=gateway_metadata
+      - PUBLISHER_EXCHANGE=filter_spain_argentina
+
+  filter_spain_argentina_2:
+    build:
+      context: .
+      dockerfile: filter/filter_spain_argentina/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      filter_years_2000_q1_1:
+        condition: service_started
+      filter_years_2000_q1_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=5,6,7,8,9
+      - CONSUMER_EXCHANGE=gateway_metadata
+      - PUBLISHER_EXCHANGE=filter_spain_argentina
+
+  filter_years_2000_q1_1:
+    build:
+      context: .
+      dockerfile: filter/filter_years_2000_q1/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=0,1,2,3,4
+      - CONSUMER_EXCHANGE=filter_spain_argentina
+      - PUBLISHER_EXCHANGE=results
+    
+  filter_years_2000_q1_2:
+    build:
+      context: .
+      dockerfile: filter/filter_years_2000_q1/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=5,6,7,8,9
+      - CONSUMER_EXCHANGE=filter_spain_argentina
+      - PUBLISHER_EXCHANGE=results
+
+  filter_one_prod_1:
+    build:
+      context: .
+      dockerfile: filter/filter_one_prod/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_budget:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=0,1,2,3,4
+      - CONSUMER_EXCHANGE=gateway_metadata
+      - PUBLISHER_EXCHANGE=filter_one_prod
+
+  filter_one_prod_2:
+    build:
+      context: .
+      dockerfile: filter/filter_one_prod/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_budget:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=5,6,7,8,9
+      - CONSUMER_EXCHANGE=gateway_metadata
+      - PUBLISHER_EXCHANGE=filter_one_prod
+
+  top_budget:
+    build:
+      context: .
+      dockerfile: generic/top_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FILTER_ID=1
+      - BINDS=0,1,2,3,4,5,6,7,8,9
+      - CONSUMER_EXCHANGE=filter_one_prod
+      - PUBLISHER_EXCHANGE=results
 
   filter_argentina_1:
     build:
@@ -38,9 +154,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      filter_years_2000_argentina_1:
+      filter_years_2000_q34_1:
         condition: service_started
-      filter_years_2000_argentina_2:
+      filter_years_2000_q34_2:
         condition: service_started
     environment:
       - PYTHONUNBUFFERED=1
@@ -57,9 +173,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      filter_years_2000_argentina_1:
+      filter_years_2000_q34_1:
         condition: service_started
-      filter_years_2000_argentina_2:
+      filter_years_2000_q34_2:
         condition: service_started
     environment:
       - PYTHONUNBUFFERED=1
@@ -68,10 +184,10 @@ services:
       - CONSUMER_EXCHANGE=gateway_metadata
       - PUBLISHER_EXCHANGE=filter_argentina
 
-  filter_years_2000_argentina_1:
+  filter_years_2000_q34_1:
     build:
       context: .
-      dockerfile: filter/filter_years_2000_argentina/filter.dockerfile
+      dockerfile: filter/filter_years_2000_q34/filter.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
@@ -89,12 +205,12 @@ services:
       - FILTER_ID=1
       - BINDS=0,1,2,3,4
       - CONSUMER_EXCHANGE=filter_argentina
-      - PUBLISHER_EXCHANGE=filter_years_2000_argentina
+      - PUBLISHER_EXCHANGE=filter_years_2000_q34
     
-  filter_years_2000_argentina_2:
+  filter_years_2000_q34_2:
     build:
       context: .
-      dockerfile: filter/filter_years_2000_argentina/filter.dockerfile
+      dockerfile: filter/filter_years_2000_q34/filter.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
@@ -112,7 +228,7 @@ services:
       - FILTER_ID=1
       - BINDS=5,6,7,8,9
       - CONSUMER_EXCHANGE=filter_argentina
-      - PUBLISHER_EXCHANGE=filter_years_2000_argentina
+      - PUBLISHER_EXCHANGE=filter_years_2000_q34
 
   join_ratings_1:
     build:
@@ -128,7 +244,7 @@ services:
       - PYTHONUNBUFFERED=1
       - FILTER_ID=1
       - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_argentina
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
       - CONSUMER_EXCHANGE_JOINED=gateway_ratings
       - PUBLISHER_EXCHANGE=join_ratings
 
@@ -146,7 +262,7 @@ services:
       - PYTHONUNBUFFERED=1
       - FILTER_ID=1
       - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_argentina
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
       - CONSUMER_EXCHANGE_JOINED=gateway_ratings
       - PUBLISHER_EXCHANGE=join_ratings
 
@@ -164,7 +280,7 @@ services:
       - PYTHONUNBUFFERED=1
       - FILTER_ID=1
       - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_argentina
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
       - CONSUMER_EXCHANGE_JOINED=gateway_credits
       - PUBLISHER_EXCHANGE=join_credits
 
@@ -182,7 +298,7 @@ services:
       - PYTHONUNBUFFERED=1
       - FILTER_ID=1
       - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_argentina
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
       - CONSUMER_EXCHANGE_JOINED=gateway_credits
       - PUBLISHER_EXCHANGE=join_credits
 
