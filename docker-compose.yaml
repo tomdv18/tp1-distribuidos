@@ -37,7 +37,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - ./movies_metadata.csv:/app/movies_metadata.csv
-      - ./ratings_39999_lines.csv:/app/ratings.csv
+      - ./ratings.csv:/app/ratings.csv
       - ./credits.csv:/app/credits.csv
   filter_spain_argentina_1:
     build:
