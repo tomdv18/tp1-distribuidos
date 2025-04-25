@@ -44,6 +44,8 @@ services:
         condition: service_started
       overview_1:
         condition: service_healthy
+      overview_2:
+        condition: service_healthy
     environment:
       - PYTHONUNBUFFERED=1
 
@@ -356,7 +358,7 @@ services:
       - rabbitmq
     environment:
       - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4,5,6,7,8,9
+      - BINDS=0,1,2,3,4
       - CONSUMER_EXCHANGE=gateway_metadata
       - PUBLISHER_EXCHANGE=overview
     volumes:
@@ -368,33 +370,33 @@ services:
       retries: 10
       start_period: 15s
 
-  #overview_2:
-  #  build:
-  #    context: .
-  #    dockerfile: generic/overview_processor/generic.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #    model_downloader:
-  #      condition: service_completed_successfully
-  #    average_budget:
-  #      condition: service_started
-  #  links: 
-  #    - rabbitmq
-  #  environment:
-  #    - PYTHONUNBUFFERED=1
-  #    - BINDS=5,6,7,8,9
-  #    - CONSUMER_EXCHANGE=gateway_metadata
-  #    - PUBLISHER_EXCHANGE=overview
-  #  volumes:
-  #    - ./model_downloader/model_volume:/models
-  #  healthcheck:
-  #    test: ["CMD", "test", "-f", "/tmp/model_ready"]
-  #    interval: 5s
-  #    timeout: 3s
-  #    retries: 10
-  #    start_period: 15s
+  overview_2:
+    build:
+      context: .
+      dockerfile: generic/overview_processor/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      model_downloader:
+        condition: service_completed_successfully
+      average_budget:
+        condition: service_started
+    links: 
+      - rabbitmq
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=5,6,7,8,9
+      - CONSUMER_EXCHANGE=gateway_metadata
+      - PUBLISHER_EXCHANGE=overview
+    volumes:
+      - ./model_downloader/model_volume:/models
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/model_ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
 
   average_budget:
     build:

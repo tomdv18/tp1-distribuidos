@@ -1,5 +1,4 @@
-FROM base:0.0.1
-RUN pip install pika transformers torch
+FROM base_nlp:0.0.1
 
 COPY model_downloader.py /app/model_downloader.py
 

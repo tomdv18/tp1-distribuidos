@@ -6,8 +6,8 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from generic import Generic
 
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 30))
-BATCH_TIMEOUT = float(os.getenv("BATCH_TIMEOUT", 10.0))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 128))
+BATCH_TIMEOUT = float(os.getenv("BATCH_TIMEOUT", 20.0))
 
 class OverviewProcessor(Generic):
     def __init__(self):

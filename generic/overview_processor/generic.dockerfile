@@ -1,5 +1,5 @@
-FROM base:0.0.1
-RUN pip install pika transformers torch huggingface_hub[hf_xet]
+FROM base_nlp:0.0.1
+RUN pip install huggingface_hub[hf_xet]
 COPY generic/generic.py /app/generic.py
 COPY generic/overview_processor/overview_processor.py /app/overview_processor.py
 COPY queue_manager /app/queue_manager
