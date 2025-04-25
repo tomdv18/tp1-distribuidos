@@ -6,7 +6,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from generic import Generic
 
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 20))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 30))
 BATCH_TIMEOUT = float(os.getenv("BATCH_TIMEOUT", 10.0))
 
 class OverviewProcessor(Generic):
@@ -32,11 +32,10 @@ class OverviewProcessor(Generic):
         return pipeline
 
     def process_message_batch(self, batch, pipeline, message_counter):
-        """Procesa un lote de mensajes y publica los resultados."""
         texts = []
         metadata = []
 
-        for method, body in batch:
+        for idx, (method, body) in enumerate(batch):
             try:
                 body_split = body.split(constants.SEPARATOR)
                 movie_id, budget, revenue, overview, title = body_split
@@ -52,8 +51,14 @@ class OverviewProcessor(Generic):
                 print(f"Error processing message: {e}")
                 continue
 
+            # Llamar a process_data_events() cada 10 mensajes Da tiempo para heartbeat
+            if idx % 10 == 0:
+                for consumer in self.node_instance.consumers:
+                    consumer.connection.process_data_events(time_limit=0.1)
+                
+
         if not texts:
-            return
+            return message_counter
 
         results = pipeline(texts)
 
@@ -67,9 +72,9 @@ class OverviewProcessor(Generic):
                 message=row_str
             )
             message_counter += 1
-        return message_counter
-    
 
+
+        return message_counter
 
     def callback(self, ch, method, _properties, body):
         if body.decode() == constants.END:

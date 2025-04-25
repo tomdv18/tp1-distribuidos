@@ -16,8 +16,8 @@ CLIENT_LISTEN_PORT = 5051  # puerto que usará el cliente para recibir resultado
 ARCHIVOS_PATH = '/app/files'
 ARCHIVOS = [
     ('movies', 'movies_metadata.csv'),
-    ('ratings', 'ratings_39999_lines.csv'),
-    ('credits', 'credits.csv')
+    ('ratings', 'ratings_60mb copy.csv'),
+    ('credits', 'credits copy.csv')
 ]
 
 def enviar_archivo(sock, identificador, archivo):
@@ -68,6 +68,7 @@ def esperar_resultados():
 
 def main():
     print("[*] Iniciando cliente...")
+    inicio = time.time()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect((GATEWAY_HOST, GATEWAY_PORT))
         print("[*] Conectado al gateway.")
@@ -76,6 +77,8 @@ def main():
         print("[*] Todos los archivos enviados.")
 
     esperar_resultados()
+    fin = time.time()
+    print(f"[*] Tiempo total de ejecución: {fin - inicio:.2f} segundos. o {(fin - inicio) / 60:.2f} minutos.")
 
 
 if __name__ == '__main__':
