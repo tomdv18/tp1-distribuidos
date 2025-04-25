@@ -1,350 +1,274 @@
-#!/usr/bin/env python
 import socket
+import os
 import csv
 import io
 import ast
-import json
+import time
 from queue_manager.queue_manager import QueueManagerPublisher, QueueManagerConsumer
 import constants
-import time
-
-EXCHANGE_METADATA = 'gateway_metadata'
-EXCHANGE_CREDITS = 'gateway_credits'
-EXCHANGE_RATINGS = 'gateway_ratings'
-
-queue_manager_metadata = QueueManagerPublisher()
-queue_manager_metadata.declare_exchange(EXCHANGE_METADATA, 'direct')
-
-queue_manager_ratings = QueueManagerPublisher()  
-queue_manager_ratings.declare_exchange(EXCHANGE_RATINGS, 'direct')
-
-queue_manager_credits = QueueManagerPublisher()  
-queue_manager_credits.declare_exchange(EXCHANGE_CREDITS, 'direct')
-
-
-queue_manager_results = QueueManagerConsumer()
-queue_manager_results.declare_exchange(exchange_name='results', exchange_type='direct')
-queue_name = queue_manager_results.queue_declare(queue_name='')
-queue_manager_results.queue_bind(
-    exchange_name='results', queue_name=queue_name, routing_key='results')
-
-eof_count = 0
-EOF_WAITING = 6
-END_OF_FILE = '<<EOF>>\n'
 
 HOST = '0.0.0.0'
 PORT = 5050
+CLIENT_HOST = 'client'
+CLIENT_PORT = 5051
+MAX_BUFFER_SIZE = 4 * 1024 * 1024
+END_OF_FILE = '<<EOF>>\n'
+EOF_WAITING = int(os.getenv('EOF', '6'))
 
-CLIENT_HOST = 'client'  
-CLIENT_PORT = 5051  
+class CSVProcessor:
+    def __init__(self, publisher, exchange, skip_header=True, log_interval=10000, end_marker=constants.END):
+        self.publisher = publisher
+        self.exchange = exchange
+        self.skip_header = skip_header
+        self.log_interval = log_interval
+        self.end_marker = end_marker
+        self.residual = ''
+        self.count = 0
+        self.closed = False
 
-MAX_BUFFER_SIZE = 4 * 1024 * 1024  # 4 MB
+    def process(self, text, partial=False):
+        if self.closed:
+            return ''
 
-resultados = []
+        text = self.residual + text
+        self.residual = ''
+        lines = text.splitlines(keepends=True)
 
-def process_movies_csv(csv_text, is_partial=False, residual_buffer=''):
-    """
-    Procesa un fragmento de texto CSV para movies_metadata.csv.
-    is_partial: Indica si el texto es un fragmento parcial (no incluye EOF).
-    residual_buffer: Línea incompleta del fragmento anterior.
-    """
-    # Combinar el texto nuevo con el residual
-    csv_text = residual_buffer + csv_text
-    f = io.StringIO(csv_text)
-    reader = csv.reader(f)
-    credits_sent = 0
-    residual = ''
-    
-    # Si es parcial, la última línea podría estar incompleta
-    if is_partial:
-        lines = csv_text.splitlines()
-        if lines and not lines[-1].endswith('\n'):
-            residual = lines[-1]
-            lines = lines[:-1]
-            f = io.StringIO('\n'.join(lines))
-            reader = csv.reader(f)
+        if partial and lines and not lines[-1].endswith('\n'):
+            self.residual = lines.pop()
 
-    for row in reader:
-        if len(row) < 24:
-            continue
-        movie_id = row[5]
-        budget = row[2]
-        genres = row[3]
-        overview = row[9]
-        production_countries = row[13]
-        release_date = row[14]
-        revenue = row[15]
-        title = row[20]
-        if not all([movie_id, budget, genres, overview, production_countries, release_date, revenue, title]):
-            continue
-        row_str = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{production_countries}{constants.SEPARATOR}{release_date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}"
-        queue_manager_metadata.publish_message(
-            exchange_name=EXCHANGE_METADATA,
-            routing_key=str(movie_id[-1]),
-            message=row_str
-        )
-        credits_sent += 1
-        if credits_sent % 10000 == 0:
-            print(f" [METADATA] Sent {credits_sent} messages")
-    
-    return residual
+        if not lines:
+            return self.residual
 
-def process_ratings_csv(csv_text, is_partial=False, residual_buffer=''):
-    """
-    Procesa un fragmento de texto CSV para ratings.csv.
-    is_partial: Indica si el texto es un fragmento parcial (no incluye EOF).
-    residual_buffer: Línea incompleta del fragmento anterior.
-    """
-    csv_text = residual_buffer + csv_text
-    f = io.StringIO(csv_text)
-    credits_sent = 0
-    reader = csv.reader(f)
-    residual = ''
-    
-    # Saltar encabezado solo en el primer fragmento
-    if not residual_buffer:
-        next(reader, None)
-    
-    # Si es parcial, guardar la última línea si está incompleta
-    if is_partial:
-        lines = csv_text.splitlines()
-        if lines and not lines[-1].endswith('\n'):
-            residual = lines[-1]
-            lines = lines[:-1]
-            f = io.StringIO('\n'.join(lines))
-            reader = csv.reader(f)
+        buffer = io.StringIO(''.join(lines))
 
-    for row in reader:
-        if len(row) < 4:
-            continue
-        movie_id = row[1]
-        rating = row[2]
-        if not movie_id or not rating:
-            continue
-        row_str = f"{movie_id}{constants.SEPARATOR}{rating}"
-        queue_manager_ratings.publish_message(
-            exchange_name=EXCHANGE_RATINGS,
-            routing_key=str(movie_id[-1]),
-            message=row_str
-        )
-        credits_sent += 1
-        if credits_sent % 1000000 == 0:
-            print(f" [RATINGS] Sent {credits_sent} messages")
-    
-    return residual
+        if self.skip_header:
+            next(buffer, None)
+            self.skip_header = False
 
-def process_credits_csv(csv_text, is_partial=False, residual_buffer=''):
-    csv_text = residual_buffer + csv_text
-    residual = ''
-    
-    # Divide el texto en líneas
-    lines = csv_text.splitlines(keepends=True)
-    
-    # Si el fragmento es parcial y la última línea no termina en salto de línea, se considera incompleta
-    if is_partial and lines and not lines[-1].endswith('\n'):
-        residual = lines.pop()  # Extrae la última línea incompleta
-    
-    # Si no hay líneas para procesar, retorna el residual
-    if not lines:
-        return residual
-    
-    # Crea un objeto StringIO con las líneas completas
-    f = io.StringIO(''.join(lines))
-    
-    # Determina si se debe omitir la primera línea (encabezado)
-    skip_header = not residual_buffer
-    
-    # Crea el lector CSV
-    reader = csv.DictReader(f, fieldnames=['cast', 'crew', 'id'])
-    
-    # Omitir el encabezado si corresponde
-    if skip_header:
-        next(reader, None)
-    
-    credits_sent = 0
-    
-    for row in reader:
-        try:
-            cast = ast.literal_eval(row['cast'])
-            movie_id = row['id']
-            
-            for actor in cast:
-                row_str = f"{movie_id}{constants.SEPARATOR}{actor['id']}{constants.SEPARATOR}{actor['name']}"
-                queue_manager_credits.publish_message(
-                    exchange_name='gateway_credits',
-                    routing_key=str(movie_id[-1]),
-                    message=row_str
-                )
-                credits_sent += 1
-                if credits_sent % 100000 == 0:
-                    print(f" [CREDITS] Sent {credits_sent} messages")
-        except Exception as e:
-            print(f"Error processing row: {e}")
-            continue
-    
-    return residual
+        reader = csv.reader(buffer)
 
-def handle_client(conn):
-    buffer = ''
-    raw_buffer = b''
-    current_type = None
-    first_line = True
-    content_buffer = ''
-    residual_buffer = ''  # Para líneas incompletas entre fragmentos
+        for row in reader:
+            if not row or any(not cell for cell in row[:1]):
+                continue
+            msg, key = self._format_and_key(row)
+            if not msg:
+                continue
+            self._publish(key, msg)
 
-    archivos_esperados = {'movies', 'ratings', 'credits'}
-    archivos_procesados = set()
+        return self.residual
 
-    while len(archivos_procesados) < len(archivos_esperados):
-        chunk = conn.recv(65536)
-        if not chunk:
-            print("[!] Cliente cerró la conexión antes de enviar todos los archivos.")
-            break
-        raw_buffer += chunk
-        #print(f"[DEBUG] Recibidos {len(chunk)} bytes, tamaño total de raw_buffer: {len(raw_buffer)}")
+    def _format_and_key(self, row):
+        if self.exchange == 'gateway_metadata':
+            if len(row) < 24:
+                return None, None
+            movie_id, genres, budget, overview, countries, date, revenue, title = (
+                row[5], row[3], row[2], row[9], row[13], row[14], row[15], row[20]
+            )
+            if not all([movie_id, genres, budget, overview, countries, date, revenue, title]):
+                return None, None
+            msg = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{countries}{constants.SEPARATOR}{date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}"
+        elif self.exchange == 'gateway_ratings':
+            if len(row) < 3 or not row[1] or not row[2]:
+                return None, None
+            msg = f"{row[1]}{constants.SEPARATOR}{row[2]}"
+            movie_id = row[1]
+        elif self.exchange == 'gateway_credits':
+            return None, None
+        else:
+            return None, None
 
-        while raw_buffer:
+        key = movie_id[-1]
+        return msg, key
+
+    def _publish(self, routing_key, message):
+        self.publisher.publish_message(exchange_name=self.exchange, routing_key=str(routing_key), message=message)
+        self.count += 1
+        if self.count % self.log_interval == 0:
+            print(f" [{self.exchange.upper()}] sent {self.count}")
+
+    def send_end(self):
+        for i in range(10):
+            self.publisher.publish_message(exchange_name=self.exchange, routing_key=str(i), message=self.end_marker)
+        self.publisher.close_connection()
+        self.closed = True
+        print(f" [x] EOF sent for {self.exchange}")
+
+
+class CreditsProcessor(CSVProcessor):
+    def process(self, text, partial=False):
+        if self.closed:
+            return ''
+
+        text = self.residual + text
+        self.residual = ''
+        lines = text.splitlines(keepends=True)
+
+        if partial and lines and not lines[-1].endswith('\n'):
+            self.residual = lines.pop()
+
+        if not lines:
+            return self.residual
+
+        buffer = io.StringIO(''.join(lines))
+        reader = csv.DictReader(buffer, fieldnames=['cast', 'crew', 'id'])
+
+        if self.skip_header:
+            next(reader, None)
+            self.skip_header = False
+
+        for row in reader:
             try:
-                # Intentar decodificar el buffer acumulado
-                buffer += raw_buffer.decode('utf-8')
-                raw_buffer = b''
-                #print(f"[DEBUG] Buffer decodificado: {len(buffer)} caracteres")
+                cast_list = ast.literal_eval(row['cast'])
+                movie_id = row['id']
+                for actor in cast_list:
+                    msg = f"{movie_id}{constants.SEPARATOR}{actor['id']}{constants.SEPARATOR}{actor['name']}"
+                    key = movie_id[-1]
+                    self._publish(key, msg)
+            except Exception:
+                continue
 
-                # Procesar el identificador si es la primera línea
-                if first_line and '\n' in buffer:
-                    lines = buffer.split('\n', 1)
-                    current_type = lines[0].strip().lower()
-                    buffer = lines[1] if len(lines) > 1 else ''
-                    first_line = False
-                    print(f"[DEBUG] Identificador detectado: {current_type}")
+        return self.residual
 
-                # Acumular contenido en content_buffer
+
+class Gateway:
+    def __init__(self):
+        self.meta_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_metadata')
+        self.meta_proc.publisher.declare_exchange('gateway_metadata', 'direct')
+        self.rate_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_ratings', log_interval=1000000)
+        self.rate_proc.publisher.declare_exchange('gateway_ratings', 'direct')
+        self.cred_proc = CreditsProcessor(QueueManagerPublisher(), 'gateway_credits')
+        self.cred_proc.publisher.declare_exchange('gateway_credits', 'direct')
+
+        self.results = []
+        self.eof_count = 0
+        self.consumer = QueueManagerConsumer()
+        self.consumer.declare_exchange(exchange_name='results', exchange_type='direct')
+        self.queue = self.consumer.queue_declare(queue_name='')
+        self.consumer.queue_bind(exchange_name='results', queue_name=self.queue, routing_key='results')
+
+    def handle_client(self, conn):
+        content_buffer = ''
+        buffer = ''
+        raw = b''
+        current = None
+        first = True
+        residual = ''
+        expected = {'movies', 'ratings', 'credits'}
+        done = set()
+
+        while len(done) < len(expected):
+            chunk = conn.recv(65536)
+            if not chunk:
+                print(" [!] client closed prematurely")
+                break
+            raw += chunk
+
+            try:
+                buffer += raw.decode('utf-8')
+                raw = b''
+
+                if first and '\n' in buffer:
+                    current, rest = buffer.split('\n', 1)
+                    current = current.strip().lower()
+                    buffer = rest
+                    first = False
+                    print(f"[*] Detected file: {current}")
+
                 content_buffer += buffer
                 buffer = ''
-                print(f"[DEBUG] Contenido acumulado: {len(content_buffer)} caracteres")
 
-                # Procesar si el buffer excede el tamaño máximo o contiene EOF
                 while len(content_buffer.encode('utf-8')) > MAX_BUFFER_SIZE or END_OF_FILE in content_buffer:
                     if END_OF_FILE in content_buffer:
-                        content, content_buffer = content_buffer.split(END_OF_FILE, 1)
-                        is_partial = False
-                        print(f"[DEBUG] EOF detectado, procesando {len(content)} caracteres")
+                        part, content_buffer = content_buffer.split(END_OF_FILE, 1)
+                        partial = False
+                        print(f"[*] Processing {current} chunk")
                     else:
-                        content = content_buffer
+                        part = content_buffer
                         content_buffer = ''
-                        is_partial = True
-                        print(f"[DEBUG] Buffer excede {MAX_BUFFER_SIZE} bytes, procesando {len(content)} caracteres")
+                        partial = True
+                        print(f"[*] Processing {current} chunk")
 
-                    # Procesar el contenido según el tipo
-                    if current_type == 'movies':
-                        print(f"[*] Procesando fragmento de 'movies'...")
-                        residual_buffer = process_movies_csv(content, is_partial, residual_buffer)
-                    elif current_type == 'ratings':
-                        print(f"[*] Procesando fragmento de 'ratings'...")
-                        residual_buffer = process_ratings_csv(content, is_partial, residual_buffer)
-                    elif current_type == 'credits':
-                        print(f"[*] Procesando fragmento de 'credits'...")
-                        residual_buffer = process_credits_csv(content, is_partial, residual_buffer)
+                    if current == 'movies':
+                        residual = self.meta_proc.process(part, partial)
+                    elif current == 'ratings':
+                        residual = self.rate_proc.process(part, partial)
+                    elif current == 'credits':
+                        residual = self.cred_proc.process(part, partial)
                     else:
-                        print(f"[!] Identificador desconocido: {current_type}")
-                        conn.sendall(f"ERROR: Identificador desconocido {current_type}\n".encode('utf-8'))
+                        conn.sendall(f"ERROR: unknown {current}\n".encode('utf-8'))
                         return
 
-                    # Si se procesó el EOF, marcar el archivo como completo
-                    if not is_partial:
-                        archivos_procesados.add(current_type)
-                        send_eof(current_type)
-                        conn.sendall(f"OK: {current_type}\n".encode('utf-8'))
-                        print(f"[DEBUG] Confirmación enviada: OK: {current_type}")
-                        current_type = None
-                        first_line = True
-                        residual_buffer = ''
-                        print("[DEBUG] Estado reiniciado para el siguiente archivo")
+                    if not partial:
+                        done.add(current)
+                        if current == 'movies':
+                            self.meta_proc.send_end()
+                        elif current == 'ratings':
+                            self.rate_proc.send_end()
+                        elif current == 'credits':
+                            self.cred_proc.send_end()
+                        conn.sendall(f"OK: {current}\n".encode('utf-8'))
+                        current = None
+                        first = True
+                        residual = ''
+                        content_buffer = ''
+                        print("[*] State reset for next file")
 
             except UnicodeDecodeError:
-                print(" [!] Secuencia UTF-8 incompleta, esperando más datos...")
-                break  # Esperar más datos
+                print(" [!] incomplete UTF-8, waiting")
+                continue
 
-
-
-def send_eof(file_type):
-    if 'movies' == file_type:
-        print(" [x] Enviando EOF para metadata")
-        for i in range(10):
-            queue_manager_metadata.publish_message(
-                exchange_name=EXCHANGE_METADATA, routing_key=str(i), message=constants.END)
-        queue_manager_metadata.close_connection()
-
-    if 'ratings'  == file_type:
-        print(" [x] Enviando EOF para ratings")
-        for i in range(10):
-            queue_manager_ratings.publish_message(
-                exchange_name=EXCHANGE_RATINGS, routing_key=str(i), message=constants.END)
-        queue_manager_ratings.close_connection()
-
-    if 'credits' == file_type:
-        print(" [x] Enviando EOF para credits")
-        for i in range(10):
-            queue_manager_credits.publish_message(
-                exchange_name=EXCHANGE_CREDITS, routing_key=str(i), message=constants.END)
-        queue_manager_credits.close_connection()
-
-def callback(ch, method, properties, body):
-    global eof_count
-    if body.decode() == constants.END:
-        print(f" [*] Received {body.decode()} for all movies, exiting...")
-        eof_count += 1
-        if eof_count == EOF_WAITING:
-            queue_manager_results.stop_consuming()
-            queue_manager_results.close_connection()
-            return
-    if body.decode().startswith('Query'):
-        print(f" [x] Processing result: {body.decode()}")
-        resultados.append(body.decode())
-
-def send_results_to_client():
-
-    max_intentos = 5
-
-    for intento in range(max_intentos):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                print(f"[*] Conectando al cliente en {CLIENT_HOST}:{CLIENT_PORT}...")
-                s.connect((CLIENT_HOST, CLIENT_PORT))
-                print("[*] Conectado al cliente, enviando resultados...")
-                for linea in resultados:
-                    s.sendall((linea + '\n').encode('utf-8'))
-                s.sendall(constants.END_COMMUNICATION.encode('utf-8'))
-                print("[*] Resultados enviados con éxito.")
+    def collect_results(self):
+        def cb(ch, method, props, body):
+            msg = body.decode()
+            if msg == constants.END:
+                self.eof_count += 1
+                if self.eof_count == EOF_WAITING:
+                    self.consumer.stop_consuming()
+                    self.consumer.close_connection()
                 return
-        except ConnectionRefusedError:
-            print(f"[!] Conexión rechazada, intento {intento + 1}/{max_intentos}. Reintentando")
-        except Exception as e:
-            print(f"[!] Error enviando resultados: {e}")
-            break
-    print("[!] No se pudo conectar al cliente para enviar resultados tras varios intentos.")
+            if msg.startswith('Query'):
+                print(f"[*] Result: {msg}")
+                self.results.append(msg)
+
+        self.consumer.consume_messages(self.queue, callback=cb)
+        self.consumer.start_consuming()
+
+    def send_results(self):
+        for attempt in range(5):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    print(f"[*] Connecting to client {CLIENT_HOST}:{CLIENT_PORT}")
+                    s.connect((CLIENT_HOST, CLIENT_PORT))
+                    print("[*] Sending results")
+                    for line in self.results:
+                        s.sendall((line + '\n').encode('utf-8'))
+                    s.sendall(constants.END_COMMUNICATION.encode('utf-8'))
+                    print("[*] Results sent")
+                    return
+            except ConnectionRefusedError:
+                print(f" [!] refused, retry {attempt + 1}")
+                time.sleep(1)
+            except Exception:
+                break
+        print(" [!] failed to send results")
+
+    def run(self):
+        start = time.time()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as srv:
+            srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            srv.bind((HOST, PORT))
+            srv.listen()
+            print(f"[*] Listening on {HOST}:{PORT}")
+            conn, addr = srv.accept()
+            with conn:
+                print(f"[+] Connection from {addr}")
+                self.handle_client(conn)
+
+        print("[*] Files done, collecting results")
+        self.collect_results()
+        self.send_results()
+        print(f"[*] Done in {time.time() - start}")
 
 if __name__ == '__main__':
-    inicio = time.time()
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Permitir reutilizar el puerto
-        server.bind((HOST, PORT))
-        server.listen()
-        print(f"[*] Gateway listening on {HOST}:{PORT}")
-
-        # Primera conexión: recibir archivos
-        conn, addr = server.accept()
-        with conn:
-            print(f"[+] Connected by {addr}")
-            handle_client(conn)
-
-        print("[*] All files received, waiting for results...")
-        # Iniciar consumo de resultados
-        queue_manager_results.consume_messages(queue_name, callback=callback)
-        queue_manager_results.start_consuming()
-
-
-    send_results_to_client()
-
-    print("[*] Gateway shutting down...")
-    print("[*] All files processed ", time.time() - inicio)
+    Gateway().run()

@@ -51,7 +51,6 @@ class OverviewProcessor(Generic):
                 print(f"Error processing message: {e}")
                 continue
 
-            # Llamar a process_data_events() cada 10 mensajes Da tiempo para heartbeat
             if idx % 10 == 0:
                 for consumer in self.node_instance.consumers:
                     consumer.connection.process_data_events(time_limit=0.1)

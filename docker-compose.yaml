@@ -1,35 +1,37 @@
-services: 
+services:
   rabbitmq:
     build:
       context: ./rabbitmq
       dockerfile: rabbitmq.dockerfile
     ports:
-      - 15672:15672
+    - 15672:15672
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
+      test:
+      - CMD
+      - rabbitmqctl
+      - status
       interval: 10s
       timeout: 5s
       retries: 5
-
   client:
     build:
       context: .
       dockerfile: client/client.dockerfile
     depends_on:
-      - gateway
+    - gateway
     volumes:
-      - ./client/files:/app/files  
+    - ./client/files:/app/files
     environment:
-      - PYTHONUNBUFFERED=1
-
+    - PYTHONUNBUFFERED=1
   gateway:
     build:
       context: .
       dockerfile: gateway/gateway.dockerfile
     restart: on-failure
+    environment:
+    - PYTHONUNBUFFERED=1
+    - EOF=6
     depends_on:
-      rabbitmq:
-        condition: service_healthy
       filter_spain_argentina_1:
         condition: service_started
       filter_spain_argentina_2:
@@ -42,13 +44,82 @@ services:
         condition: service_started
       filter_argentina_2:
         condition: service_started
+      filter_years_2000_q34_1:
+        condition: service_started
+      filter_years_2000_q34_2:
+        condition: service_started
+      join_ratings_1:
+        condition: service_started
+      join_ratings_2:
+        condition: service_started
+      join_credits_1:
+        condition: service_started
+      join_credits_2:
+        condition: service_started
       overview_1:
         condition: service_healthy
       overview_2:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+  model_downloader:
+    build:
+      context: ./model_downloader
+      dockerfile: model_downloader.dockerfile
+    volumes:
+    - ./model_downloader/model_volume:/models
+  average_budget:
+    build:
+      context: .
+      dockerfile: generic/average_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     environment:
-      - PYTHONUNBUFFERED=1
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=overview
+    - PUBLISHER_EXCHANGE=results
+  top_budget:
+    build:
+      context: .
+      dockerfile: generic/top_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=filter_one_prod
+    - PUBLISHER_EXCHANGE=results
+  top_rating:
+    build:
+      context: .
+      dockerfile: generic/top_rating/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=join_ratings
+    - PUBLISHER_EXCHANGE=results
+  top_actors:
+    build:
+      context: .
+      dockerfile: generic/top_actors/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=join_credits
+    - PUBLISHER_EXCHANGE=results
   filter_spain_argentina_1:
     build:
       context: .
@@ -62,11 +133,10 @@ services:
       filter_years_2000_q1_2:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE=gateway_metadata
-      - PUBLISHER_EXCHANGE=filter_spain_argentina
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_spain_argentina
   filter_spain_argentina_2:
     build:
       context: .
@@ -80,11 +150,10 @@ services:
       filter_years_2000_q1_2:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE=gateway_metadata
-      - PUBLISHER_EXCHANGE=filter_spain_argentina
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_spain_argentina
   filter_years_2000_q1_1:
     build:
       context: .
@@ -94,11 +163,10 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE=filter_spain_argentina
-      - PUBLISHER_EXCHANGE=results
-    
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - CONSUMER_EXCHANGE=filter_spain_argentina
+    - PUBLISHER_EXCHANGE=results
   filter_years_2000_q1_2:
     build:
       context: .
@@ -108,11 +176,10 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE=filter_spain_argentina
-      - PUBLISHER_EXCHANGE=results
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - CONSUMER_EXCHANGE=filter_spain_argentina
+    - PUBLISHER_EXCHANGE=results
   filter_one_prod_1:
     build:
       context: .
@@ -124,11 +191,10 @@ services:
       top_budget:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE=gateway_metadata
-      - PUBLISHER_EXCHANGE=filter_one_prod
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_one_prod
   filter_one_prod_2:
     build:
       context: .
@@ -140,25 +206,10 @@ services:
       top_budget:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE=gateway_metadata
-      - PUBLISHER_EXCHANGE=filter_one_prod
-
-  top_budget:
-    build:
-      context: .
-      dockerfile: generic/top_budget/generic.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4,5,6,7,8,9
-      - CONSUMER_EXCHANGE=filter_one_prod
-      - PUBLISHER_EXCHANGE=results
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_one_prod
   filter_argentina_1:
     build:
       context: .
@@ -172,11 +223,10 @@ services:
       filter_years_2000_q34_2:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE=gateway_metadata
-      - PUBLISHER_EXCHANGE=filter_argentina
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_argentina
   filter_argentina_2:
     build:
       context: .
@@ -190,11 +240,10 @@ services:
       filter_years_2000_q34_2:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE=gateway_metadata
-      - PUBLISHER_EXCHANGE=filter_argentina
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_argentina
   filter_years_2000_q34_1:
     build:
       context: .
@@ -212,11 +261,10 @@ services:
       join_credits_2:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE=filter_argentina
-      - PUBLISHER_EXCHANGE=filter_years_2000_q34
-    
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - CONSUMER_EXCHANGE=filter_argentina
+    - PUBLISHER_EXCHANGE=filter_years_2000_q34
   filter_years_2000_q34_2:
     build:
       context: .
@@ -234,11 +282,10 @@ services:
       join_credits_2:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE=filter_argentina
-      - PUBLISHER_EXCHANGE=filter_years_2000_q34
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - CONSUMER_EXCHANGE=filter_argentina
+    - PUBLISHER_EXCHANGE=filter_years_2000_q34
   join_ratings_1:
     build:
       context: .
@@ -250,12 +297,11 @@ services:
       top_rating:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
-      - CONSUMER_EXCHANGE_JOINED=gateway_ratings
-      - PUBLISHER_EXCHANGE=join_ratings
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+    - CONSUMER_EXCHANGE_JOINED=gateway_ratings
+    - PUBLISHER_EXCHANGE=join_ratings
   join_ratings_2:
     build:
       context: .
@@ -267,12 +313,11 @@ services:
       top_rating:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
-      - CONSUMER_EXCHANGE_JOINED=gateway_ratings
-      - PUBLISHER_EXCHANGE=join_ratings
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+    - CONSUMER_EXCHANGE_JOINED=gateway_ratings
+    - PUBLISHER_EXCHANGE=join_ratings
   join_credits_1:
     build:
       context: .
@@ -284,12 +329,11 @@ services:
       top_actors:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
-      - CONSUMER_EXCHANGE_JOINED=gateway_credits
-      - PUBLISHER_EXCHANGE=join_credits
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+    - CONSUMER_EXCHANGE_JOINED=gateway_credits
+    - PUBLISHER_EXCHANGE=join_credits
   join_credits_2:
     build:
       context: .
@@ -301,47 +345,11 @@ services:
       top_actors:
         condition: service_started
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
-      - CONSUMER_EXCHANGE_JOINED=gateway_credits
-      - PUBLISHER_EXCHANGE=join_credits
-
-  top_rating:
-    build:
-      context: .
-      dockerfile: generic/top_rating/generic.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4,5,6,7,8,9
-      - CONSUMER_EXCHANGE=join_ratings
-      - PUBLISHER_EXCHANGE=results
-
-  top_actors:
-    build:
-      context: .
-      dockerfile: generic/top_actors/generic.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4,5,6,7,8,9
-      - CONSUMER_EXCHANGE=join_credits
-      - PUBLISHER_EXCHANGE=results
-
-  model_downloader:
-    build:
-      context: ./model_downloader
-      dockerfile: model_downloader.dockerfile
-    volumes:
-      - ./model_downloader/model_volume:/models
-
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+    - CONSUMER_EXCHANGE_JOINED=gateway_credits
+    - PUBLISHER_EXCHANGE=join_credits
   overview_1:
     build:
       context: .
@@ -350,26 +358,29 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      model_downloader:
-        condition: service_completed_successfully
       average_budget:
         condition: service_started
-    links: 
-      - rabbitmq
+      model_downloader:
+        condition: service_completed_successfully
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4
-      - CONSUMER_EXCHANGE=gateway_metadata
-      - PUBLISHER_EXCHANGE=overview
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=overview
+    links:
+    - rabbitmq
     volumes:
-      - ./model_downloader/model_volume:/models
+    - ./model_downloader/model_volume:/models
     healthcheck:
-      test: ["CMD", "test", "-f", "/tmp/model_ready"]
+      test:
+      - CMD
+      - test
+      - -f
+      - /tmp/model_ready
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 15s
-
   overview_2:
     build:
       context: .
@@ -378,36 +389,26 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      model_downloader:
-        condition: service_completed_successfully
       average_budget:
         condition: service_started
-    links: 
-      - rabbitmq
+      model_downloader:
+        condition: service_completed_successfully
     environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=5,6,7,8,9
-      - CONSUMER_EXCHANGE=gateway_metadata
-      - PUBLISHER_EXCHANGE=overview
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=overview
+    links:
+    - rabbitmq
     volumes:
-      - ./model_downloader/model_volume:/models
+    - ./model_downloader/model_volume:/models
     healthcheck:
-      test: ["CMD", "test", "-f", "/tmp/model_ready"]
+      test:
+      - CMD
+      - test
+      - -f
+      - /tmp/model_ready
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 15s
-
-  average_budget:
-    build:
-      context: .
-      dockerfile: generic/average_budget/generic.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      - PYTHONUNBUFFERED=1
-      - BINDS=0,1,2,3,4,5,6,7,8,9
-      - CONSUMER_EXCHANGE=overview
-      - PUBLISHER_EXCHANGE=results
