@@ -6,6 +6,8 @@ import ast
 import time
 from queue_manager.queue_manager import QueueManagerPublisher, QueueManagerConsumer
 import constants
+import signal
+import sys
 
 HOST = '0.0.0.0'
 PORT = 5050
@@ -94,7 +96,6 @@ class CSVProcessor:
         self.closed = True
         print(f" [x] EOF sent for {self.exchange}")
 
-
 class CreditsProcessor(CSVProcessor):
     def process(self, text, partial=False):
         if self.closed:
@@ -130,7 +131,6 @@ class CreditsProcessor(CSVProcessor):
 
         return self.residual
 
-
 class Gateway:
     def __init__(self):
         self.meta_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_metadata')
@@ -146,6 +146,47 @@ class Gateway:
         self.consumer.declare_exchange(exchange_name='results', exchange_type='direct')
         self.queue = self.consumer.queue_declare(queue_name='')
         self.consumer.queue_bind(exchange_name='results', queue_name=self.queue, routing_key='results')
+
+        self.server_socket = None
+        self.client_conn = None
+        self._setup_signal_handler()
+
+    def _setup_signal_handler(self):
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+
+    def _signal_handler(self, sig, frame):
+        print("\n[!] Interrupt received, shutting down...")
+        self._cleanup()
+        sys.exit(0)
+
+    def _cleanup(self):
+        try:
+            if self.client_conn:
+                self.client_conn.close()
+        except:
+            pass
+        try:
+            if self.server_socket:
+                self.server_socket.close()
+        except:
+            pass
+        try:
+            self.meta_proc.publisher.close_connection()
+        except:
+            pass
+        try:
+            self.rate_proc.publisher.close_connection()
+        except:
+            pass
+        try:
+            self.cred_proc.publisher.close_connection()
+        except:
+            pass
+        try:
+            self.consumer.close_connection()
+        except:
+            pass
 
     def handle_client(self, conn):
         content_buffer = ''
@@ -259,8 +300,10 @@ class Gateway:
             srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             srv.bind((HOST, PORT))
             srv.listen()
+            self.server_socket = srv
             print(f"[*] Listening on {HOST}:{PORT}")
             conn, addr = srv.accept()
+            self.client_conn = conn
             with conn:
                 print(f"[+] Connection from {addr}")
                 self.handle_client(conn)
