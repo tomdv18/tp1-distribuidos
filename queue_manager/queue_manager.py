@@ -2,7 +2,7 @@ import pika
 
 class QueueManager:
     def __init__(self):
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', heartbeat=3600, blocked_connection_timeout=3600))
         self.channel = self.connection.channel()
 
     def declare_exchange(self, exchange_name, exchange_type='direct'):
