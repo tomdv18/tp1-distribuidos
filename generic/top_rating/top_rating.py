@@ -16,14 +16,16 @@ class TopRating(Generic):
             if self.ended == self.node_instance.total_binds():
                 print(" [*] Received EOF for all, exiting...")
                 self.node_instance.stop_consuming_and_close_connection(0)
-                self.node_instance.send_message(
-                    routing_key='results',
-                    message=f"Query 3 -> {self.top_rating[0]} {self.top_rating[1]} {self.top_rating[2]}"
-                )
-                self.node_instance.send_message(
-                    routing_key='results',
-                    message=f"Query 3 -> {self.worst_rating[0]} {self.worst_rating[1]} {self.worst_rating[2]}"
-                )
+                if self.top_rating is not None:
+                    
+                    self.node_instance.send_message(
+                        routing_key='results',
+                        message=f"Query 3 -> {self.top_rating[0]} {self.top_rating[1]} {self.top_rating[2]}"
+                    )
+                    self.node_instance.send_message(
+                        routing_key='results',
+                        message=f"Query 3 -> {self.worst_rating[0]} {self.worst_rating[1]} {self.worst_rating[2]}"
+                    )
                 self.node_instance.send_end_message('results')
                 self.node_instance.close_publisher_connection()
         else:

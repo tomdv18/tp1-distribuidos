@@ -10,7 +10,6 @@ class FileTransferClient:
         self.GATEWAY_HOST = 'gateway'
         self.GATEWAY_PORT = 5050
         self.BUFFER_SIZE = 1024 * 1024
-        self.END_OF_FILE = '<<EOF>>\n'
         self.CLIENT_LISTEN_PORT = 5051
         self.ARCHIVOS_PATH = '/app/files'
         self.ARCHIVOS = [
@@ -72,7 +71,7 @@ class FileTransferClient:
                 buffer += linea
             if buffer:
                 self.client_socket.sendall(buffer.encode('utf-8'))
-            self.client_socket.sendall(self.END_OF_FILE.encode('utf-8'))
+            self.client_socket.sendall(constants.END_OF_FILE.encode('utf-8'))
             print(f"[+] File {archivo} sent with identifier {identificador}.")
         
         confirmacion = self.client_socket.recv(1024).decode('utf-8').strip()
@@ -109,13 +108,14 @@ class FileTransferClient:
         inicio = time.time()
         
         try:
+            inicio_transferencia = time.time()
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client_socket.connect((self.GATEWAY_HOST, self.GATEWAY_PORT))
             print("[*] Connected to gateway.")
             
             for identificador, archivo in self.ARCHIVOS:
                 self.send_file(identificador, archivo)
-            print("[*] All files sent.")
+            print("[*] All files sent. Time taken for transfer: {:.2f} seconds".format(time.time() - inicio_transferencia))
             
             self.wait_for_results()
             

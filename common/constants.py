@@ -1,3 +1,4 @@
 END = "EOF"
 SEPARATOR = "-*-"
 END_COMMUNICATION = '<<END>>\n'
+END_OF_FILE = '<<EOF>>\n'

@@ -14,7 +14,6 @@ PORT = 5050
 CLIENT_HOST = 'client'
 CLIENT_PORT = 5051
 MAX_BUFFER_SIZE = 4 * 1024 * 1024
-END_OF_FILE = '<<EOF>>\n'
 EOF_WAITING = int(os.getenv('EOF', '6'))
 
 class CSVProcessor:
@@ -219,9 +218,9 @@ class Gateway:
                 content_buffer += buffer
                 buffer = ''
 
-                while len(content_buffer.encode('utf-8')) > MAX_BUFFER_SIZE or END_OF_FILE in content_buffer:
-                    if END_OF_FILE in content_buffer:
-                        part, content_buffer = content_buffer.split(END_OF_FILE, 1)
+                while len(content_buffer.encode('utf-8')) > MAX_BUFFER_SIZE or constants.END_OF_FILE in content_buffer:
+                    if constants.END_OF_FILE in content_buffer:
+                        part, content_buffer = content_buffer.split(constants.END_OF_FILE, 1)
                         partial = False
                         print(f"[*] Processing {current} chunk")
                     else:
