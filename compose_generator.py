@@ -29,10 +29,10 @@ def build_base_services():
         'client': {'build': {'context': '.', 'dockerfile': 'client/client.dockerfile'}, 'depends_on': ['gateway'], 'volumes': ['./client/files:/app/files'], 'environment': ['PYTHONUNBUFFERED=1']},
         'gateway': {'build': {'context': '.', 'dockerfile': 'gateway/gateway.dockerfile'}, 'restart': 'on-failure', 'environment': ['PYTHONUNBUFFERED=1']},
         'model_downloader': {'build': {'context': './model_downloader', 'dockerfile': 'model_downloader.dockerfile'}, 'volumes': ['./model_downloader/model_volume:/models']},
-        'average_budget': {'build': {'context': '.', 'dockerfile': 'generic/average_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=overview', 'PUBLISHER_EXCHANGE=results']},
-        'top_budget': {'build': {'context': '.', 'dockerfile': 'generic/top_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=filter_one_prod', 'PUBLISHER_EXCHANGE=results']},
-        'top_rating': {'build': {'context': '.', 'dockerfile': 'generic/top_rating/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_ratings', 'PUBLISHER_EXCHANGE=results']},
-        'top_actors': {'build': {'context': '.', 'dockerfile': 'generic/top_actors/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_credits', 'PUBLISHER_EXCHANGE=results']}
+        'average_budget': {'build': {'context': '.', 'dockerfile': 'generic/average_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=overview', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=average_budget']},
+        'top_budget': {'build': {'context': '.', 'dockerfile': 'generic/top_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=filter_one_prod', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_budget']},
+        'top_rating': {'build': {'context': '.', 'dockerfile': 'generic/top_rating/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_ratings', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_rating']},
+        'top_actors': {'build': {'context': '.', 'dockerfile': 'generic/top_actors/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_credits', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_actors']},
     }
 
 def generate_scaled_services():
@@ -49,7 +49,7 @@ def generate_scaled_services():
                 dockerfile = 'generic/overview_processor/generic.dockerfile'
             else:
                 dockerfile = f"generic/{key}/generic.dockerfile"
-            env = ['PYTHONUNBUFFERED=1', f"BINDS={','.join(map(str, binds))}"]
+            env = ['PYTHONUNBUFFERED=1', f"BINDS={','.join(map(str, binds))}", f"NODE_ID={key}_{idx}"]
             depends = {'rabbitmq': {'condition': 'service_healthy'}}
             if key == 'filter_spain_argentina':
                 prev = SERVICE_INSTANCES.get('filter_years_2000_q1', 1)

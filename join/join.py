@@ -14,7 +14,8 @@ class Join:
             consumer_exchanges_and_callbacks=[
                 (os.getenv("CONSUMER_EXCHANGE_METADATA", ""), self.callback_metadata),
                 (os.getenv("CONSUMER_EXCHANGE_JOINED", ""), self.callback_joined),
-            ]
+            ],
+            node_id = os.getenv("NODE_ID", "")
         )
         self.node_instance.start_consuming()
 

@@ -11,7 +11,8 @@ class Generic:
             binds = os.getenv("BINDS", "").split(",") if os.getenv("BINDS", "") else [],
             consumer_exchanges_and_callbacks=[
                 (os.getenv("CONSUMER_EXCHANGE", ""), self.callback),
-            ]
+            ],
+            node_id = os.getenv("NODE_ID", "")
         )
         self.node_instance.start_consuming()
 

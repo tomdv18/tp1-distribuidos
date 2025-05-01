@@ -13,9 +13,9 @@ class FileTransferClient:
         self.CLIENT_LISTEN_PORT = 5051
         self.ARCHIVOS_PATH = '/app/files'
         self.ARCHIVOS = [
-            ('movies', 'movies_metadata.csv'),
-            ('ratings', 'ratings_39999_lines.csv'),
-            ('credits', 'credits.csv')
+            ('movies', 'movies_metadata20%.csv'),
+            ('ratings', 'ratings20%.csv'),
+            ('credits', 'credits20%.csv')
         ]
         self.client_socket = None
         self.server_socket = None
