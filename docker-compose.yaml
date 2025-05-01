@@ -81,6 +81,7 @@ services:
     - BINDS=0,1,2,3,4,5,6,7,8,9
     - CONSUMER_EXCHANGE=overview
     - PUBLISHER_EXCHANGE=results
+    - NODE_ID=average_budget
   top_budget:
     build:
       context: .
@@ -94,6 +95,7 @@ services:
     - BINDS=0,1,2,3,4,5,6,7,8,9
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=results
+    - NODE_ID=top_budget
   top_rating:
     build:
       context: .
@@ -107,6 +109,7 @@ services:
     - BINDS=0,1,2,3,4,5,6,7,8,9
     - CONSUMER_EXCHANGE=join_ratings
     - PUBLISHER_EXCHANGE=results
+    - NODE_ID=top_rating
   top_actors:
     build:
       context: .
@@ -120,6 +123,7 @@ services:
     - BINDS=0,1,2,3,4,5,6,7,8,9
     - CONSUMER_EXCHANGE=join_credits
     - PUBLISHER_EXCHANGE=results
+    - NODE_ID=top_actors
   filter_spain_argentina_1:
     build:
       context: .
@@ -135,6 +139,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
+    - NODE_ID=filter_spain_argentina_1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_spain_argentina
   filter_spain_argentina_2:
@@ -152,6 +157,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
+    - NODE_ID=filter_spain_argentina_2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_spain_argentina
   filter_years_2000_q1_1:
@@ -165,6 +171,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
+    - NODE_ID=filter_years_2000_q1_1
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
   filter_years_2000_q1_2:
@@ -178,6 +185,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
+    - NODE_ID=filter_years_2000_q1_2
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
   filter_one_prod_1:
@@ -193,6 +201,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
+    - NODE_ID=filter_one_prod_1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_one_prod
   filter_one_prod_2:
@@ -208,6 +217,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
+    - NODE_ID=filter_one_prod_2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_one_prod
   filter_argentina_1:
@@ -225,6 +235,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
+    - NODE_ID=filter_argentina_1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_argentina
   filter_argentina_2:
@@ -242,6 +253,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
+    - NODE_ID=filter_argentina_2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_argentina
   filter_years_2000_q34_1:
@@ -263,6 +275,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
+    - NODE_ID=filter_years_2000_q34_1
     - CONSUMER_EXCHANGE=filter_argentina
     - PUBLISHER_EXCHANGE=filter_years_2000_q34
   filter_years_2000_q34_2:
@@ -284,6 +297,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
+    - NODE_ID=filter_years_2000_q34_2
     - CONSUMER_EXCHANGE=filter_argentina
     - PUBLISHER_EXCHANGE=filter_years_2000_q34
   join_ratings_1:
@@ -299,6 +313,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
+    - NODE_ID=join_ratings_1
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_ratings
     - PUBLISHER_EXCHANGE=join_ratings
@@ -315,6 +330,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
+    - NODE_ID=join_ratings_2
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_ratings
     - PUBLISHER_EXCHANGE=join_ratings
@@ -331,6 +347,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
+    - NODE_ID=join_credits_1
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_credits
     - PUBLISHER_EXCHANGE=join_credits
@@ -347,6 +364,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
+    - NODE_ID=join_credits_2
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_credits
     - PUBLISHER_EXCHANGE=join_credits
@@ -365,6 +383,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
+    - NODE_ID=overview_1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=overview
     links:
@@ -396,6 +415,7 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
+    - NODE_ID=overview_2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=overview
     links:

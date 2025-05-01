@@ -3,20 +3,22 @@ import constants
 import os
 
 class Node:
-    def __init__(self, publisher_exchange, binds, consumer_exchanges_and_callbacks):
+    def __init__(self, publisher_exchange, binds, consumer_exchanges_and_callbacks, node_id):
         self.publisher_exchange = publisher_exchange
         self.binds = binds
         self.consumer_exchanges_and_callbacks = consumer_exchanges_and_callbacks
+        self.node_id = node_id
         self.ended = [0] * len(consumer_exchanges_and_callbacks)
         self.publisher = self.declare_publisher()
         self.consumers = self.declare_consumers()
+
     
     def declare_consumers(self):
         queue_manager_inputs = []
         for exchange, callback in self.consumer_exchanges_and_callbacks:
             queue_manager_input = QueueManagerConsumer()
             queue_manager_input.declare_exchange(exchange_name=exchange, exchange_type='direct')
-            queue_name = queue_manager_input.queue_declare(queue_name='')
+            queue_name = queue_manager_input.queue_declare(queue_name=f"{exchange}_{self.node_id}_input_queue")
             for bind in self.binds:
                 queue_manager_input.queue_bind(
                     exchange_name=exchange, queue_name=queue_name, routing_key=bind)
