@@ -12,7 +12,8 @@ class Filter:
             consumer_exchanges_and_callbacks=[
                 (os.getenv("CONSUMER_EXCHANGE", ""), self.callback),
             ],
-            node_id = os.getenv("NODE_ID", "")
+            node_id = os.getenv("NODE_ID", ""),
+            client_count = int(os.getenv("CLIENT_COUNT", 1))
         )
         self.node_instance.start_consuming()
 

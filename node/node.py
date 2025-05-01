@@ -3,7 +3,7 @@ import constants
 import os
 
 class Node:
-    def __init__(self, publisher_exchange, binds, consumer_exchanges_and_callbacks, node_id):
+    def __init__(self, publisher_exchange, binds, consumer_exchanges_and_callbacks, node_id, client_count):
         self.publisher_exchange = publisher_exchange
         self.binds = binds
         self.consumer_exchanges_and_callbacks = consumer_exchanges_and_callbacks
@@ -11,6 +11,7 @@ class Node:
         self.ended = [0] * len(consumer_exchanges_and_callbacks)
         self.publisher = self.declare_publisher()
         self.consumers = self.declare_consumers()
+        self.client_count = client_count
 
     
     def declare_consumers(self):
@@ -18,7 +19,7 @@ class Node:
         for exchange, callback in self.consumer_exchanges_and_callbacks:
             queue_manager_input = QueueManagerConsumer()
             queue_manager_input.declare_exchange(exchange_name=exchange, exchange_type='direct')
-            queue_name = queue_manager_input.queue_declare(queue_name=f"{exchange}_{self.node_id}_input_queue")
+            queue_name = queue_manager_input.queue_declare(queue_name=f"{exchange}_input_queue_{self.node_id}")
             for bind in self.binds:
                 queue_manager_input.queue_bind(
                     exchange_name=exchange, queue_name=queue_name, routing_key=bind)
@@ -52,7 +53,7 @@ class Node:
             self.send_end_message(bind)
 
     def total_binds(self):
-        return len(self.binds)
+        return len(self.binds) * self.client_count
 
     def stop_consuming_and_close_connection(self, consumer):
         self.consumers[consumer].stop_consuming()

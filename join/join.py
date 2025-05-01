@@ -15,7 +15,9 @@ class Join:
                 (os.getenv("CONSUMER_EXCHANGE_METADATA", ""), self.callback_metadata),
                 (os.getenv("CONSUMER_EXCHANGE_JOINED", ""), self.callback_joined),
             ],
-            node_id = os.getenv("NODE_ID", "")
+            node_id = os.getenv("NODE_ID", ""),
+            client_count = int(os.getenv("CLIENT_COUNT", 1))
+
         )
         self.node_instance.start_consuming()
 

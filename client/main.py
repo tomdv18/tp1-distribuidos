@@ -7,15 +7,21 @@ import sys
 
 class FileTransferClient:
     def __init__(self):
+
+        movies_file = os.getenv('ARCHIVO_MOVIES', 'movies.csv')
+        ratings_file = os.getenv('ARCHIVO_RATINGS', 'ratings.csv')
+        credits_file = os.getenv('ARCHIVO_CREDITS', 'credits.csv')
+
+
         self.GATEWAY_HOST = 'gateway'
         self.GATEWAY_PORT = 5050
         self.BUFFER_SIZE = 1024 * 1024
         self.CLIENT_LISTEN_PORT = 5051
         self.ARCHIVOS_PATH = '/app/files'
         self.ARCHIVOS = [
-            ('movies', 'movies_metadata20%.csv'),
-            ('ratings', 'ratings20%.csv'),
-            ('credits', 'credits20%.csv')
+            ('movies', movies_file),
+            ('ratings', ratings_file),
+            ('credits', credits_file)
         ]
         self.client_socket = None
         self.server_socket = None
@@ -102,6 +108,22 @@ class FileTransferClient:
                     return
                 print(f"[RESULT] {linea}")
 
+    def receive_results_inline(self):
+        print("[*] Waiting for results...")
+        buffer = ''
+        while True:
+            chunk = self.client_socket.recv(4096)
+            if not chunk:
+                print("[!] Gateway closed the connection.")
+                break
+            buffer += chunk.decode('utf-8')
+            while '\n' in buffer:
+                line, buffer = buffer.split('\n', 1)
+                if line.strip() == constants.END_COMMUNICATION.strip():
+                    print("[*] Complete results received.")
+                    return
+                print(f"[RESULT] {line}")
+
     def run(self):
         """Main execution method."""
         print("[*] Starting client...")
@@ -117,7 +139,7 @@ class FileTransferClient:
                 self.send_file(identificador, archivo)
             print("[*] All files sent. Time taken for transfer: {:.2f} seconds".format(time.time() - inicio_transferencia))
             
-            self.wait_for_results()
+            self.receive_results_inline()
             
         finally:
             self._cleanup_sockets()
