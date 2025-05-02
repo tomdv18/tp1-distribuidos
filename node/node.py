@@ -40,11 +40,11 @@ class Node:
         for consumer in self.consumers:
             consumer.start_consuming()
     
-    def send_end_message(self, routing_key):
+    def send_end_message(self, routing_key, addr):
         self.publisher.publish_message(
             exchange_name=self.publisher_exchange,
             routing_key=routing_key,
-            message=constants.END
+            message=f"{constants.END} {addr}"
         )
         print(f" [*] Sending EOF for bind {routing_key}")
 
@@ -53,8 +53,8 @@ class Node:
             self.send_end_message(bind)
 
     def total_binds(self):
-        return len(self.binds) * self.client_count
-
+        return len(self.binds)
+    
     def stop_consuming_and_close_connection(self, consumer):
         self.consumers[consumer].stop_consuming()
         self.consumers[consumer].close_connection()

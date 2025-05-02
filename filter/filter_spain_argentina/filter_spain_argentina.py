@@ -10,7 +10,9 @@ class FilterSpainArgentina(Filter):
             genres = body_split[1]
             release_date = body_split[5]
             title = body_split[7]
-            row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{release_date}"
+            client = body_split[8]
+        
+            row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{release_date}{constants.SEPARATOR}{client}"
             return str(movie_id[-1]), row_str
         return None, None
 

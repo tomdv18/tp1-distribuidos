@@ -15,18 +15,33 @@ class Filter:
             node_id = os.getenv("NODE_ID", ""),
             client_count = int(os.getenv("CLIENT_COUNT", 1))
         )
+        self.clients_ended = {}
         self.node_instance.start_consuming()
 
     def callback(self, _ch, method, _properties, body):
-        if body.decode() == constants.END:
-            print(f" [*] Received EOF for bind {method.routing_key}")
-            self.end_when_bind_ends(method.routing_key)
+        if body.decode().startswith(constants.END):
+            client = body.decode()[len(constants.END):].strip()
+
+            print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
+            self.end_when_bind_ends(method.routing_key, client)
+            if client not in self.clients_ended:
+                self.clients_ended[client] = 0
+
+            self.clients_ended[client] += 1
             self.ended += 1
-            if self.ended == self.node_instance.total_binds():
-                print(" [*] Received EOF for all movies, exiting...")
-                self.end_when_all_binds_end()
+
+
+            all_clients_done = all(
+                ended == self.node_instance.total_binds()
+                for ended in self.clients_ended.values()
+            )
+
+            if all_clients_done and self.node_instance.client_count == len(self.clients_ended):
+                print(" [*] All clients finished all binds. Shutting down...")
+                self.end_when_all_binds_end(self.clients_ended)
                 self.node_instance.stop_consuming_and_close_connection(0)
                 self.node_instance.close_publisher_connection()
+
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             routing_key, row_str = self.filter(body_split)
@@ -36,10 +51,10 @@ class Filter:
                     message=row_str
                 )
 
-    def end_when_bind_ends(self, bind):
-        self.node_instance.send_end_message(bind)
+    def end_when_bind_ends(self, bind, clientAddr):
+        self.node_instance.send_end_message(bind, clientAddr)
 
-    def end_when_all_binds_end(self):
+    def end_when_all_binds_end(self, clientAddr):
         pass
 
     def filter(self, body_split):
