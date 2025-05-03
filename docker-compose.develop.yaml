@@ -36,12 +36,12 @@ services:
       #  condition: service_healthy
       rabbitmq:
         condition: service_healthy
-  model_downloader:
-    build:
-      context: ./model_downloader
-      dockerfile: model_downloader.dockerfile
-    volumes:
-    - ./model_downloader/model_volume:/models
+  #model_downloader:
+  #  build:
+  #    context: ./model_downloader
+  #    dockerfile: model_downloader.dockerfile
+  #  volumes:
+  #  - ./model_downloader/model_volume:/models
   #average_budget:
   #  build:
   #    context: .
@@ -83,9 +83,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - ARCHIVO_MOVIES=movies_metadata.csv
-    - ARCHIVO_RATINGS=vacio.csv
-    - ARCHIVO_CREDITS=vacio.csv
+    - MOVIES_FILE=movies_metadata.csv
+    - RATINGS_FILE=empty.csv
+    - CREDITS_FILE=empty.csv
   client_2:
     build:
       context: .
@@ -97,9 +97,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - ARCHIVO_MOVIES=movies1000.csv
-    - ARCHIVO_RATINGS=vacio.csv
-    - ARCHIVO_CREDITS=vacio.csv
+    - MOVIES_FILE=movies_metadata.csv
+    - RATINGS_FILE=empty.csv
+    - CREDITS_FILE=empty.csv
   filter_spain_argentina_1:
     build:
       context: .

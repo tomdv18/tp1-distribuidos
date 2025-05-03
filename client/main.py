@@ -8,17 +8,17 @@ import sys
 class FileTransferClient:
     def __init__(self):
 
-        movies_file = os.getenv('ARCHIVO_MOVIES', 'movies.csv')
-        ratings_file = os.getenv('ARCHIVO_RATINGS', 'ratings.csv')
-        credits_file = os.getenv('ARCHIVO_CREDITS', 'credits.csv')
+        movies_file = os.getenv('MOVIES_FILE', 'movies.csv')
+        ratings_file = os.getenv('RATINGS_FILE', 'ratings.csv')
+        credits_file = os.getenv('CREDITS_FILE', 'credits.csv')
 
 
         self.GATEWAY_HOST = 'gateway'
         self.GATEWAY_PORT = 5050
         self.BUFFER_SIZE = 1024 * 1024
         self.CLIENT_LISTEN_PORT = 5051
-        self.ARCHIVOS_PATH = '/app/files'
-        self.ARCHIVOS = [
+        self.FILES_PATH = '/app/files'
+        self.FILES = [
             ('movies', movies_file),
             ('ratings', ratings_file),
             ('credits', credits_file)
@@ -60,28 +60,28 @@ class FileTransferClient:
             except:
                 pass
 
-    def send_file(self, identificador, archivo):
+    def send_file(self, identifier, filename):
         """Send a file to the gateway."""
-        ruta = os.path.join(self.ARCHIVOS_PATH, archivo)
+        path = os.path.join(self.FILES_PATH, filename)
         
         # Send logical identifier
-        self.client_socket.sendall((identificador + '\n').encode('utf-8'))
+        self.client_socket.sendall((identifier + '\n').encode('utf-8'))
 
-        with open(ruta, 'r', encoding='utf-8') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             buffer = ''
-            for linea in f:
-                if len(buffer.encode('utf-8')) + len(linea.encode('utf-8')) > self.BUFFER_SIZE:
-                    print(f"[+] Sending {len(buffer)} bytes of data for file {archivo}...")
+            for line in f:
+                if len(buffer.encode('utf-8')) + len(line.encode('utf-8')) > self.BUFFER_SIZE:
+                    print(f"[+] Sending {len(buffer)} bytes of data for file {filename}...")
                     self.client_socket.sendall(buffer.encode('utf-8'))
                     buffer = ''
-                buffer += linea
+                buffer += line
             if buffer:
                 self.client_socket.sendall(buffer.encode('utf-8'))
             self.client_socket.sendall(constants.END_OF_FILE.encode('utf-8'))
-            print(f"[+] File {archivo} sent with identifier {identificador}.")
+            print(f"[+] File {filename} sent with identifier {identifier}.")
         
-        confirmacion = self.client_socket.recv(1024).decode('utf-8').strip()
-        print(f"[*] Confirmation received: {confirmacion}")
+        confirmation = self.client_socket.recv(1024).decode('utf-8').strip()
+        print(f"[*] Confirmation received: {confirmation}")
 
     def wait_for_results(self):
         """Listen for and process results from the server."""
@@ -102,11 +102,11 @@ class FileTransferClient:
                 break
             buffer += chunk.decode('utf-8')
             while '\n' in buffer:
-                linea, buffer = buffer.split('\n', 1)
-                if linea in (constants.END_COMMUNICATION, constants.END_COMMUNICATION.strip()):
+                line, buffer = buffer.split('\n', 1)
+                if line in (constants.END_COMMUNICATION, constants.END_COMMUNICATION.strip()):
                     print("[*] Complete results received.")
                     return
-                print(f"[RESULT] {linea}")
+                print(f"[RESULT] {line}")
 
     def receive_results_inline(self):
         print("[*] Waiting for results...")
@@ -127,25 +127,25 @@ class FileTransferClient:
     def run(self):
         """Main execution method."""
         print("[*] Starting client...")
-        inicio = time.time()
+        start = time.time()
         
         try:
-            inicio_transferencia = time.time()
+            transfer_start = time.time()
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client_socket.connect((self.GATEWAY_HOST, self.GATEWAY_PORT))
             print("[*] Connected to gateway.")
             
-            for identificador, archivo in self.ARCHIVOS:
-                self.send_file(identificador, archivo)
-            print("[*] All files sent. Time taken for transfer: {:.2f} seconds".format(time.time() - inicio_transferencia))
+            for identifier, filename in self.FILES:
+                self.send_file(identifier, filename)
+            print("[*] All files sent. Time taken for transfer: {:.2f} seconds".format(time.time() - transfer_start))
             
             self.receive_results_inline()
             
         finally:
             self._cleanup_sockets()
         
-        fin = time.time()
-        print(f"[*] Total execution time: {fin - inicio:.2f} seconds or {(fin - inicio) / 60:.2f} minutes.")
+        end = time.time()
+        print(f"[*] Total execution time: {end - start:.2f} seconds or {(end - start) / 60:.2f} minutes.")
 
 def main():
     client = FileTransferClient()
