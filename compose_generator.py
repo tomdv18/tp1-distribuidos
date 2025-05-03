@@ -38,16 +38,14 @@ def distribute_binds(binds, count):
     return result
 
 def build_base_services():
-    client_count = SERVICE_INSTANCES.get('client', 0)
-
     return {
         'rabbitmq': {'build': {'context': './rabbitmq', 'dockerfile': 'rabbitmq.dockerfile'}, 'ports': ['15672:15672'], 'healthcheck': {'test': ['CMD', 'rabbitmqctl', 'status'], 'interval': '10s', 'timeout': '5s', 'retries': 5}},
         'gateway': {'build': {'context': '.', 'dockerfile': 'gateway/gateway.dockerfile'}, 'restart': 'on-failure', 'environment': ['PYTHONUNBUFFERED=1']},
         'model_downloader': {'build': {'context': './model_downloader', 'dockerfile': 'model_downloader.dockerfile'}, 'volumes': ['./model_downloader/model_volume:/models']},
-        'average_budget': {'build': {'context': '.', 'dockerfile': 'generic/average_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=overview', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=average_budget',f'CLIENT_COUNT={client_count}']},
-        'top_budget': {'build': {'context': '.', 'dockerfile': 'generic/top_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=filter_one_prod', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_budget',f'CLIENT_COUNT={client_count}']},
-        'top_rating': {'build': {'context': '.', 'dockerfile': 'generic/top_rating/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_ratings', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_rating',f'CLIENT_COUNT={client_count}']},
-        'top_actors': {'build': {'context': '.', 'dockerfile': 'generic/top_actors/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_credits', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_actors',f'CLIENT_COUNT={client_count}']},
+        'average_budget': {'build': {'context': '.', 'dockerfile': 'generic/average_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=overview', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=average_budget']},
+        'top_budget': {'build': {'context': '.', 'dockerfile': 'generic/top_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=filter_one_prod', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_budget']},
+        'top_rating': {'build': {'context': '.', 'dockerfile': 'generic/top_rating/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_ratings', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_rating']},
+        'top_actors': {'build': {'context': '.', 'dockerfile': 'generic/top_actors/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_credits', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_actors']},
     }
 
 def generate_scaled_services():
@@ -73,7 +71,7 @@ def generate_scaled_services():
         }
     for key, count in SERVICE_INSTANCES.items():
         if key == 'client':
-            continue  # Ya procesado arriba
+            continue
         binds_groups = distribute_binds(TOTAL_BINDS, count)
         for idx, binds in enumerate(binds_groups, start=1):
             name = f"{key}_{idx}"
@@ -85,7 +83,7 @@ def generate_scaled_services():
                 dockerfile = 'generic/overview_processor/generic.dockerfile'
             else:
                 dockerfile = f"generic/{key}/generic.dockerfile"
-            env = ['PYTHONUNBUFFERED=1', f"BINDS={','.join(map(str, binds))}", f"NODE_ID={key}_{idx}", f"CLIENT_COUNT={SERVICE_INSTANCES.get('client', 0)}"]
+            env = ['PYTHONUNBUFFERED=1', f"BINDS={','.join(map(str, binds))}", f"NODE_ID={key}_{idx}"]
             depends = {'rabbitmq': {'condition': 'service_healthy'}}
             if key == 'filter_spain_argentina':
                 prev = SERVICE_INSTANCES.get('filter_years_2000_q1', 1)
@@ -131,7 +129,7 @@ def assemble_compose():
     for name, svc in compose['services'].items():
         if name not in IMMUTABLE_SERVICES and name != 'gateway' :
             if name.startswith('client_'):
-                continue  # Excluir instancias de client
+                continue
             if any(e.startswith('PUBLISHER_EXCHANGE=results') for e in svc.get('environment', [])):
                 continue
             gw_deps[name] = {'condition': 'service_started'}

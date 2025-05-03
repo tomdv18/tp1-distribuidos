@@ -12,7 +12,8 @@ class FilterOneProd(Filter):
                 country_name = body_split[4].split("'name': \"")[1].split('"')[0]
             movie_id = body_split[0]
             budget = body_split[2]
-            row_str = f"{country_name}{constants.SEPARATOR}{budget}"
+            client = body_split[8]
+            row_str = f"{country_name}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}"
             return str(movie_id[-1]), row_str
         return None, None
 

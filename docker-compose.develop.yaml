@@ -20,16 +20,16 @@ services:
     restart: on-failure
     environment:
     - PYTHONUNBUFFERED=1
-    - EOF=2
+    - EOF=3
     depends_on:
       filter_spain_argentina_1:
         condition: service_started
       filter_spain_argentina_2:
         condition: service_started
-      #filter_one_prod_1:
-      #  condition: service_started
-      #filter_one_prod_2:
-      #  condition: service_started
+      filter_one_prod_1:
+        condition: service_started
+      filter_one_prod_2:
+        condition: service_started
       #overview_1:
       #  condition: service_healthy
       #overview_2:
@@ -56,22 +56,20 @@ services:
   #  - CONSUMER_EXCHANGE=overview
   #  - PUBLISHER_EXCHANGE=results
   #  - NODE_ID=average_budget
-  #  - CLIENT_COUNT=2
-  #top_budget:
-  #  build:
-  #    context: .
-  #    dockerfile: generic/top_budget/generic.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=0,1,2,3,4,5,6,7,8,9
-  #  - CONSUMER_EXCHANGE=filter_one_prod
-  #  - PUBLISHER_EXCHANGE=results
-  #  - NODE_ID=top_budget
-  #  - CLIENT_COUNT=2
+  top_budget:
+    build:
+      context: .
+      dockerfile: generic/top_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=filter_one_prod
+    - PUBLISHER_EXCHANGE=results
+    - NODE_ID=top_budget
   client_1:
     build:
       context: .
@@ -164,40 +162,38 @@ services:
     - NODE_ID=filter_years_2000_q1_2
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
-  #filter_one_prod_1:
-  #  build:
-  #    context: .
-  #    dockerfile: filter/filter_one_prod/filter.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #    top_budget:
-  #      condition: service_started
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=0,1,2,3,4
-  #  - NODE_ID=filter_one_prod_1
-  #  - CLIENT_COUNT=2
-  #  - CONSUMER_EXCHANGE=gateway_metadata
-  #  - PUBLISHER_EXCHANGE=filter_one_prod
-  #filter_one_prod_2:
-  #  build:
-  #    context: .
-  #    dockerfile: filter/filter_one_prod/filter.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #    top_budget:
-  #      condition: service_started
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=5,6,7,8,9
-  #  - NODE_ID=filter_one_prod_2
-  #  - CLIENT_COUNT=2
-  #  - CONSUMER_EXCHANGE=gateway_metadata
-  #  - PUBLISHER_EXCHANGE=filter_one_prod
+  filter_one_prod_1:
+    build:
+      context: .
+      dockerfile: filter/filter_one_prod/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_budget:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=filter_one_prod_1
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_one_prod
+  filter_one_prod_2:
+    build:
+      context: .
+      dockerfile: filter/filter_one_prod/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_budget:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=filter_one_prod_2
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_one_prod
   ##overview_1:
   ##  build:
   #    context: .
@@ -214,7 +210,6 @@ services:
   #  - PYTHONUNBUFFERED=1
   #  - BINDS=0,1,2,3,4
   #  - NODE_ID=overview_1
-  #  - CLIENT_COUNT=2
   #  - CONSUMER_EXCHANGE=gateway_metadata
   #  - PUBLISHER_EXCHANGE=overview
   #  links:
@@ -247,7 +242,6 @@ services:
   #  - PYTHONUNBUFFERED=1
   #  - BINDS=5,6,7,8,9
   #  - NODE_ID=overview_2
-  #  - CLIENT_COUNT=2
   #  - CONSUMER_EXCHANGE=gateway_metadata
   #  - PUBLISHER_EXCHANGE=overview
   #  links:

@@ -269,8 +269,11 @@ def handle_client_wrapper(args):
     with conn:
         log(f"[+] Connection from {addr} with id {client_id}")        
         gateway.handle_client(conn, client_id)
+        log(f"[*] Finished processing client {client_id}")
         gateway.collect_results(conn, client_id)
+        log(f"[*] Finished collecting results for client {client_id}")
         gateway.send_results(conn, client_id)
+        log(f"[*] Finished sending results for client {client_id}")
 
 
 def run_server():

@@ -4,6 +4,7 @@ import os
 
 class Filter:
     def __init__(self):
+        self.clients_ended = {}
         self.node_instance = node.Node(
             publisher_exchange = os.getenv("PUBLISHER_EXCHANGE", ""),
             binds = os.getenv("BINDS", "").split(",") if os.getenv("BINDS", "") else [],
@@ -12,18 +13,16 @@ class Filter:
             ],
             node_id = os.getenv("NODE_ID", ""),
         )
-        self.clients_ended = {}
         self.node_instance.start_consuming()
 
     def callback(self, _ch, method, _properties, body):
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
-
             print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
             self.end_when_bind_ends(method.routing_key, client)
+
             if client not in self.clients_ended:
                 self.clients_ended[client] = 0
-
             self.clients_ended[client] += 1
 
             if self.clients_ended[client] == self.node_instance.total_binds():
