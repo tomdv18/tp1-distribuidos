@@ -3,7 +3,7 @@ import constants
 import os
 
 class Node:
-    def __init__(self, publisher_exchange, binds, consumer_exchanges_and_callbacks, node_id, client_count):
+    def __init__(self, publisher_exchange, binds, consumer_exchanges_and_callbacks, node_id):
         self.publisher_exchange = publisher_exchange
         self.binds = binds
         self.consumer_exchanges_and_callbacks = consumer_exchanges_and_callbacks
@@ -11,7 +11,6 @@ class Node:
         self.ended = [0] * len(consumer_exchanges_and_callbacks)
         self.publisher = self.declare_publisher()
         self.consumers = self.declare_consumers()
-        self.client_count = client_count
 
     
     def declare_consumers(self):
@@ -40,11 +39,11 @@ class Node:
         for consumer in self.consumers:
             consumer.start_consuming()
     
-    def send_end_message(self, routing_key, addr):
+    def send_end_message(self, routing_key, client):
         self.publisher.publish_message(
             exchange_name=self.publisher_exchange,
             routing_key=routing_key,
-            message=f"{constants.END} {addr}"
+            message=f"{constants.END} {client}"
         )
         print(f" [*] Sending EOF for bind {routing_key}")
 

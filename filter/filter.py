@@ -4,8 +4,6 @@ import os
 
 class Filter:
     def __init__(self):
-        self.ended = 0
-
         self.node_instance = node.Node(
             publisher_exchange = os.getenv("PUBLISHER_EXCHANGE", ""),
             binds = os.getenv("BINDS", "").split(",") if os.getenv("BINDS", "") else [],
@@ -13,7 +11,6 @@ class Filter:
                 (os.getenv("CONSUMER_EXCHANGE", ""), self.callback),
             ],
             node_id = os.getenv("NODE_ID", ""),
-            client_count = int(os.getenv("CLIENT_COUNT", 1))
         )
         self.clients_ended = {}
         self.node_instance.start_consuming()
@@ -28,19 +25,11 @@ class Filter:
                 self.clients_ended[client] = 0
 
             self.clients_ended[client] += 1
-            self.ended += 1
 
+            if self.clients_ended[client] == self.node_instance.total_binds():
+                print(f" [*] Client {client} finished all binds.")
+                self.end_when_all_binds_end(client)
 
-            all_clients_done = all(
-                ended == self.node_instance.total_binds()
-                for ended in self.clients_ended.values()
-            )
-
-            if all_clients_done and self.node_instance.client_count == len(self.clients_ended):
-                print(" [*] All clients finished all binds. Shutting down...")
-                self.end_when_all_binds_end(self.clients_ended)
-                self.node_instance.stop_consuming_and_close_connection(0)
-                self.node_instance.close_publisher_connection()
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)
@@ -51,14 +40,19 @@ class Filter:
                     message=row_str
                 )
 
-    def end_when_bind_ends(self, bind, clientAddr):
-        self.node_instance.send_end_message(bind, clientAddr)
+    def end_when_bind_ends(self, bind, client):
+        self.node_instance.send_end_message(bind, client)
 
-    def end_when_all_binds_end(self, clientAddr):
+    def end_when_all_binds_end(self, client):
         pass
 
     def filter(self, body_split):
         raise NotImplementedError("Subclass responsibility")
+    
+    def shutdown(self):
+        self.node_instance.stop_consuming_and_close_connection(0)
+        self.node_instance.close_publisher_connection()
+        print(" [*] Filter shutdown.")
 
 if __name__ == '__main__':
     Filter()

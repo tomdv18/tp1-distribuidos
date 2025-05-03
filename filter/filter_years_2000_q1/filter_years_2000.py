@@ -15,16 +15,14 @@ class Filter2000s(Filter):
             return os.getenv("PUBLISHER_EXCHANGE", ""), row_str
         return None, None
     
-    def end_when_bind_ends(self, bind, clientAddr):
+    def end_when_bind_ends(self, bind, client):
         pass
 
-    def end_when_all_binds_end(self, clientAddr):
-        for client in clientAddr:
-            print(f"client {client}")
-            self.node_instance.send_end_message(
-                os.getenv("PUBLISHER_EXCHANGE", ""),
-                client
-            )
+    def end_when_all_binds_end(self, client):
+        self.node_instance.send_end_message(
+            os.getenv("PUBLISHER_EXCHANGE", ""),
+            client
+        )
 
 if __name__ == '__main__':
     Filter2000s()

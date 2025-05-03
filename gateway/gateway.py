@@ -7,6 +7,7 @@ import time
 from multiprocessing import Pool
 import signal
 import sys
+import uuid
 from queue_manager.queue_manager import QueueManagerPublisher, QueueManagerConsumer
 import constants
 
@@ -263,12 +264,13 @@ class Gateway:
 
 def handle_client_wrapper(args):
     conn, addr = args
+    client_id = uuid.uuid4()
     gateway = Gateway()
     with conn:
-        log(f"[+] Connection from {addr}")
-        gateway.handle_client(conn, addr)
-        gateway.collect_results(conn, addr)
-        gateway.send_results(conn, addr)
+        log(f"[+] Connection from {addr} with id {client_id}")        
+        gateway.handle_client(conn, client_id)
+        gateway.collect_results(conn, client_id)
+        gateway.send_results(conn, client_id)
 
 
 def run_server():

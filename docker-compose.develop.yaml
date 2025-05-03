@@ -116,7 +116,6 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=filter_spain_argentina_1
-    - CLIENT_COUNT=2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_spain_argentina
   filter_spain_argentina_2:
@@ -135,7 +134,6 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=filter_spain_argentina_2
-    - CLIENT_COUNT=2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_spain_argentina
   filter_years_2000_q1_1:
@@ -150,7 +148,6 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=filter_years_2000_q1_1
-    - CLIENT_COUNT=2
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
   filter_years_2000_q1_2:
@@ -165,7 +162,6 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=filter_years_2000_q1_2
-    - CLIENT_COUNT=2
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
   #filter_one_prod_1:
