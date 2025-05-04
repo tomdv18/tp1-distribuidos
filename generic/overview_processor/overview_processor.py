@@ -38,12 +38,12 @@ class OverviewProcessor(Generic):
         for idx, (method, body) in enumerate(batch):
             try:
                 body_split = body.split(constants.SEPARATOR)
-                movie_id, budget, revenue, overview, title = body_split
+                movie_id, budget, revenue, overview, title, client = body_split
 
                 tokenized_text = pipeline.tokenizer(overview, padding=False, truncation=False, return_tensors="pt")
                 if len(tokenized_text['input_ids'][0]) <= pipeline.tokenizer.model_max_length:
                     texts.append(overview)
-                    metadata.append((movie_id, budget, revenue, title))
+                    metadata.append((movie_id, budget, revenue, title, client))
                     print(f"Processing movie {movie_id}: {title}")
                 else:
                     print(f"Skipping movie {movie_id}: Overview too long ({len(tokenized_text['input_ids'][0])} tokens)")
@@ -61,11 +61,11 @@ class OverviewProcessor(Generic):
 
         results = pipeline(texts)
 
-        for result, (movie_id, budget, revenue, title) in zip(results, metadata):
+        for result, (movie_id, budget, revenue, title, client) in zip(results, metadata):
             sentiment_label = result['label']
             sentiment_score = str(result['score'])
 
-            row_str = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{sentiment_label}{constants.SEPARATOR}{sentiment_score}{constants.SEPARATOR}{title}"
+            row_str = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{sentiment_label}{constants.SEPARATOR}{sentiment_score}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}"
             self.node_instance.send_message(
                 routing_key=str(movie_id[-1]),
                 message=row_str
@@ -76,28 +76,36 @@ class OverviewProcessor(Generic):
         return message_counter
 
     def callback(self, ch, method, _properties, body):
-        if body.decode() == constants.END:
-            self.ended += 1
-            print(f"Received END message from {method.routing_key}, count: {self.ended}")
-            if self.ended == self.node_instance.total_binds():
-                print("Received EOF for all movies")
+        if body.decode().startswith(constants.END):
+            client = body.decode()[len(constants.END):].strip()
+
+            if client not in self.clients_ended:
+                self.clients_ended[client] = 0
+            self.clients_ended[client] += 1
+            print(f"Received END message from {client}, count: {self.clients_ended[client]}")
+
+
+            if self.clients_ended[client] == self.node_instance.total_binds():
+                print(f" [*] Client {client} finished all binds.")
                 if self.batch:
-                    self.message_counter = self.process_message_batch(self.batch, self.pipeline, self.message_counter)
-                self.node_instance.send_end_message_to_all_binds()
-                self.node_instance.stop_consuming_and_close_connection()
-                self.node_instance.close_publisher_connection()
+                    self.message_counter = self.process_message_batch(self.batch, self.pipeline, self.message_counter)                
+                self.node_instance.send_end_message_to_all_binds(client)
+
                 
         else:
 
             body_split = body.decode().split(constants.SEPARATOR)
             budget = body_split[2]
             revenue = body_split[6]
+            
             if float(budget) != 0 and float(revenue) != 0:
                 movie_id = body_split[0]
                 overview = body_split[3]
                 title = body_split[7]
+                client = body_split[8]
 
-                body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}"
+
+                body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}"
                 self.batch.append((method, body))
 
                 if len(self.batch) >= BATCH_SIZE or (time.time() - self.last_time >= BATCH_TIMEOUT):
