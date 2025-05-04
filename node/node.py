@@ -47,9 +47,9 @@ class Node:
         )
         print(f" [*] Sending EOF for bind {routing_key}")
 
-    def send_end_message_to_all_binds(self):
+    def send_end_message_to_all_binds(self, client):
         for bind in self.binds:
-            self.send_end_message(bind)
+            self.send_end_message(bind, client)
 
     def total_binds(self):
         return len(self.binds)
