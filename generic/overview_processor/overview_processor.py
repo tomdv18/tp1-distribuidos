@@ -52,8 +52,7 @@ class OverviewProcessor(Generic):
                 continue
 
             if idx % 10 == 0:
-                for consumer in self.node_instance.consumers:
-                    consumer.connection.process_data_events(time_limit=0.1)
+                self.node_instance.consumer.connection.process_data_events(time_limit=0.1)
                 
 
         if not texts:
