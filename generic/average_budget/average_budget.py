@@ -15,7 +15,7 @@ class AverageBudget(Generic):
             self.ended += 1
             if self.ended == self.node_instance.total_binds():
                 print(" [*] Received EOF for all, exiting...")
-                self.node_instance.stop_consuming_and_close_connection(0)
+                self.node_instance.stop_consuming_and_close_connection()
                 for sentiment_label in self.results:
                     if self.cant[sentiment_label] != 0:
                         average = self.results[sentiment_label] / self.cant[sentiment_label]

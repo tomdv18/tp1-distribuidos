@@ -4,9 +4,11 @@ import os
 
 class Join:
     def __init__(self):
-        self.ended_metadata = 0
-        self.ended_joined = 0
+        self.clients_ended_metadata = {}
+        self.clients_ended_joined = {}
         self.results = {}
+        self.waiting = {}
+        self.finished = []
 
         self.node_instance = node.Node(
             publisher_exchange = os.getenv("PUBLISHER_EXCHANGE", ""),
@@ -16,28 +18,41 @@ class Join:
                 (os.getenv("CONSUMER_EXCHANGE_JOINED", ""), self.callback_joined),
             ],
             node_id = os.getenv("NODE_ID", ""),
-            client_count = int(os.getenv("CLIENT_COUNT", 1))
-
         )
         self.node_instance.start_consuming()
 
     def callback_metadata(self, _ch, method, _properties, body):
-        if body.decode() == constants.END:  
-            print(f" [*] Received EOF for metadata bind {method.routing_key}")
-            self.ended_metadata += 1
-            if self.ended_metadata == self.node_instance.total_binds():
-                print(" [*] Received EOF for all movies")
-                self.node_instance.stop_consuming_and_close_connection(0)
-                return
+        if body.decode().startswith(constants.END):
+            client = body.decode()[len(constants.END):].strip()
+            print(f" [*] Received EOF for metadata bind {method.routing_key} from client {client}")
+            if client not in self.clients_ended_metadata:
+                self.clients_ended_metadata[client] = 0
+            self.clients_ended_metadata[client] += 1
+            if self.clients_ended_metadata[client] == self.node_instance.total_binds():
+                print(f" [*] Client {client} finished all metadata binds.")
+                if client in self.clients_ended_joined and self.clients_ended_joined[client] == self.node_instance.total_binds():
+                    self.send_pending(client)
+
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             movie_id = body_split[0]
             title = body_split[1]
-            if movie_id not in self.results:
-                self.results[movie_id] = (title, 0, 0)
+            client = body_split[2]
+            if client not in self.results:
+                self.results[client] = {}
+            if movie_id not in self.results[client]:
+                self.results[client][movie_id] = (title, 0, 0)
 
     def callback_joined(self, _ch, method, _properties, body):
         raise NotImplementedError("Subclass responsibility")
+    
+    def send_pending(self, client):
+        raise NotImplementedError("Subclass responsibility")
+    
+    def shutdown(self):
+        self.node_instance.stop_consuming_and_close_connection()
+        self.node_instance.close_publisher_connection()
+        print(" [*] Join shutdown.")
         
 if __name__ == '__main__':
     Join()

@@ -20,7 +20,7 @@ services:
     restart: on-failure
     environment:
     - PYTHONUNBUFFERED=1
-    - EOF=3
+    - EOF=5
     depends_on:
       filter_spain_argentina_1:
         condition: service_started
@@ -29,6 +29,10 @@ services:
       filter_one_prod_1:
         condition: service_started
       filter_one_prod_2:
+        condition: service_started
+      filter_argentina_1:
+        condition: service_started
+      filter_argentina_2:
         condition: service_started
       #overview_1:
       #  condition: service_healthy
@@ -82,8 +86,8 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - MOVIES_FILE=movies_metadata.csv
-    - RATINGS_FILE=empty.csv
-    - CREDITS_FILE=empty.csv
+    - RATINGS_FILE=ratings_39999_lines.csv
+    - CREDITS_FILE=mini_credits.csv
   client_2:
     build:
       context: .
@@ -96,8 +100,8 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - MOVIES_FILE=movies_metadata.csv
-    - RATINGS_FILE=empty.csv
-    - CREDITS_FILE=empty.csv
+    - RATINGS_FILE=ratings_39999_lines.csv
+    - CREDITS_FILE=mini_credits.csv
   filter_spain_argentina_1:
     build:
       context: .
@@ -258,4 +262,179 @@ services:
   #    timeout: 3s
   #    retries: 10
   #    start_period: 15s
-  
+  filter_argentina_1:
+    build:
+      context: .
+      dockerfile: filter/filter_argentina/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      filter_years_2000_q34_1:
+        condition: service_started
+      filter_years_2000_q34_2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=filter_argentina_1
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_argentina
+  filter_argentina_2:
+    build:
+      context: .
+      dockerfile: filter/filter_argentina/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      filter_years_2000_q34_1:
+        condition: service_started
+      filter_years_2000_q34_2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=filter_argentina_2
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_argentina
+  filter_years_2000_q34_1:
+    build:
+      context: .
+      dockerfile: filter/filter_years_2000_q34/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      join_ratings_1:
+        condition: service_started
+      join_ratings_2:
+        condition: service_started
+      join_credits_1:
+        condition: service_started
+      join_credits_2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=filter_years_2000_q34_1
+    - CONSUMER_EXCHANGE=filter_argentina
+    - PUBLISHER_EXCHANGE=filter_years_2000_q34
+  filter_years_2000_q34_2:
+    build:
+      context: .
+      dockerfile: filter/filter_years_2000_q34/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      join_ratings_1:
+        condition: service_started
+      join_ratings_2:
+        condition: service_started
+      join_credits_1:
+        condition: service_started
+      join_credits_2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=filter_years_2000_q34_2
+    - CONSUMER_EXCHANGE=filter_argentina
+    - PUBLISHER_EXCHANGE=filter_years_2000_q34
+  join_ratings_1:
+    build:
+      context: .
+      dockerfile: join/join_ratings/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_rating:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=join_ratings_1
+    - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+    - CONSUMER_EXCHANGE_JOINED=gateway_ratings
+    - PUBLISHER_EXCHANGE=join_ratings
+  join_ratings_2:
+    build:
+      context: .
+      dockerfile: join/join_ratings/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_rating:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=join_ratings_2
+    - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+    - CONSUMER_EXCHANGE_JOINED=gateway_ratings
+    - PUBLISHER_EXCHANGE=join_ratings
+  join_credits_1:
+    build:
+      context: .
+      dockerfile: join/join_credits/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_actors:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=join_credits_1
+    - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+    - CONSUMER_EXCHANGE_JOINED=gateway_credits
+    - PUBLISHER_EXCHANGE=join_credits
+  join_credits_2:
+    build:
+      context: .
+      dockerfile: join/join_credits/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_actors:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=join_credits_2
+    - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+    - CONSUMER_EXCHANGE_JOINED=gateway_credits
+    - PUBLISHER_EXCHANGE=join_credits
+  top_rating:
+    build:
+      context: .
+      dockerfile: generic/top_rating/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=join_ratings
+    - PUBLISHER_EXCHANGE=results
+    - NODE_ID=top_rating
+  top_actors:
+    build:
+      context: .
+      dockerfile: generic/top_actors/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=join_credits
+    - PUBLISHER_EXCHANGE=results
+    - NODE_ID=top_actors

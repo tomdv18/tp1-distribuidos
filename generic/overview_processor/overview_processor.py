@@ -84,7 +84,7 @@ class OverviewProcessor(Generic):
                 if self.batch:
                     self.message_counter = self.process_message_batch(self.batch, self.pipeline, self.message_counter)
                 self.node_instance.send_end_message_to_all_binds()
-                self.node_instance.stop_consuming_and_close_connection(0)
+                self.node_instance.stop_consuming_and_close_connection()
                 self.node_instance.close_publisher_connection()
                 
         else:

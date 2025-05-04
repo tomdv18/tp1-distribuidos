@@ -5,39 +5,46 @@ from generic import Generic
 
 class TopRating(Generic):
     def __init__(self):
-        self.top_rating = None
-        self.worst_rating = None
+        self.top_rating = {}
+        self.worst_rating = {}
         super().__init__()
 
     def callback(self, ch, method, _properties, body):
-        if body.decode() == constants.END:
-            print(f" [*] Received EOF for bind {method.routing_key}")
-            self.ended += 1
-            if self.ended == self.node_instance.total_binds():
-                print(" [*] Received EOF for all, exiting...")
-                self.node_instance.stop_consuming_and_close_connection(0)
-                if self.top_rating is not None:
+        if body.decode().startswith(constants.END):
+            client = body.decode()[len(constants.END):].strip()
+            print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
+            if client not in self.clients_ended:
+                self.clients_ended[client] = 0
+            self.clients_ended[client] += 1
+            if self.clients_ended[client] == self.node_instance.total_binds():
+                print(f" [*] Client {client} finished all binds.")
+                if client in self.top_rating and client in self.worst_rating:
                     
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 3 -> {self.top_rating[0]} {self.top_rating[1]} {self.top_rating[2]}"
+                        message=f"Query 3 -> {self.top_rating[client][0]} {self.top_rating[client][1]} {self.top_rating[client][2]}{constants.SEPARATOR}{client}"
                     )
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 3 -> {self.worst_rating[0]} {self.worst_rating[1]} {self.worst_rating[2]}"
+                        message=f"Query 3 -> {self.worst_rating[client][0]} {self.worst_rating[client][1]} {self.worst_rating[client][2]}{constants.SEPARATOR}{client}"
                     )
-                self.node_instance.send_end_message('results')
-                self.node_instance.close_publisher_connection()
+                self.node_instance.send_end_message('results', client)
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             movie_id = body_split[0]
             title = body_split[1]
             rating = float(body_split[2])
+            client = body_split[3]
         
-            if self.top_rating is None or rating > self.top_rating[2]:
-                self.top_rating = (movie_id, title, rating)
-            if self.worst_rating is None or rating < self.worst_rating[2]:
-               self.worst_rating = (movie_id, title, rating)
+            if client not in self.top_rating or rating > self.top_rating[client][2]:
+                self.top_rating[client] = (movie_id, title, rating)
+            if client not in self.worst_rating or rating < self.worst_rating[client][2]:
+               self.worst_rating[client] = (movie_id, title, rating)
+
+    def shutdown(self):
+        self.node_instance.stop_consuming_and_close_connection()
+        self.node_instance.close_publisher_connection()
+        print(" [*] Top shutdown.")
 
 if __name__ == '__main__':
     TopRating()

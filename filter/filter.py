@@ -49,7 +49,7 @@ class Filter:
         raise NotImplementedError("Subclass responsibility")
     
     def shutdown(self):
-        self.node_instance.stop_consuming_and_close_connection(0)
+        self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
         print(" [*] Filter shutdown.")
 

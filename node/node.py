@@ -10,13 +10,12 @@ class Node:
         self.node_id = node_id
         self.ended = [0] * len(consumer_exchanges_and_callbacks)
         self.publisher = self.declare_publisher()
-        self.consumers = self.declare_consumers()
+        self.consumer = self.declare_consumer()
 
     
-    def declare_consumers(self):
-        queue_manager_inputs = []
+    def declare_consumer(self):
+        queue_manager_input = QueueManagerConsumer()
         for exchange, callback in self.consumer_exchanges_and_callbacks:
-            queue_manager_input = QueueManagerConsumer()
             queue_manager_input.declare_exchange(exchange_name=exchange, exchange_type='direct')
             queue_name = queue_manager_input.queue_declare(queue_name=f"{exchange}_input_queue_{self.node_id}")
             for bind in self.binds:
@@ -27,8 +26,7 @@ class Node:
                 queue_name,
                 callback=callback
             )
-            queue_manager_inputs.append(queue_manager_input)
-        return queue_manager_inputs
+        return queue_manager_input
     
     def declare_publisher(self):
         queue_manager_output = QueueManagerPublisher()  
@@ -36,8 +34,7 @@ class Node:
         return queue_manager_output
     
     def start_consuming(self):
-        for consumer in self.consumers:
-            consumer.start_consuming()
+        self.consumer.start_consuming()
     
     def send_end_message(self, routing_key, client):
         self.publisher.publish_message(
@@ -47,16 +44,16 @@ class Node:
         )
         print(f" [*] Sending EOF for bind {routing_key}")
 
-    def send_end_message_to_all_binds(self):
+    def send_end_message_to_all_binds(self, client):
         for bind in self.binds:
-            self.send_end_message(bind)
+            self.send_end_message(bind, client)
 
     def total_binds(self):
         return len(self.binds)
     
-    def stop_consuming_and_close_connection(self, consumer):
-        self.consumers[consumer].stop_consuming()
-        self.consumers[consumer].close_connection()
+    def stop_consuming_and_close_connection(self):
+        self.consumers.stop_consuming()
+        self.consumers.close_connection()
 
     def close_publisher_connection(self):
         self.publisher.close_connection()
