@@ -85,9 +85,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - MOVIES_FILE=movies_metadata1000.csv
-    - RATINGS_FILE=ratings20%.csv
-    - CREDITS_FILE=credits20%.csv
+    - MOVIES_FILE=movies_metadata.csv
+    - RATINGS_FILE=ratings_39999_lines.csv
+    - CREDITS_FILE=mini_credits.csv
   client_2:
     build:
       context: .
@@ -99,9 +99,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - MOVIES_FILE=movies_metadata20%.csv
-    - RATINGS_FILE=ratings20%.csv
-    - CREDITS_FILE=credits20%.csv
+    - MOVIES_FILE=movies_metadata.csv
+    - RATINGS_FILE=ratings_39999_lines.csv
+    - CREDITS_FILE=mini_credits.csv
   filter_spain_argentina_1:
     build:
       context: .

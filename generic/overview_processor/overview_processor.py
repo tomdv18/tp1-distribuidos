@@ -6,17 +6,15 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from generic import Generic
 
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 128))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
 BATCH_TIMEOUT = float(os.getenv("BATCH_TIMEOUT", 20.0))
 
 class OverviewProcessor(Generic):
     def __init__(self):
         self.pipeline = self.init_model()
-        self.message_counter = 0
-        self.batch = []
-        self.last_time = time.time()
+        self.batch = {}
+        self.last_time = {}
         super().__init__()
-        print(f"Total messages sent: {self.message_counter}")
 
     def init_model(self):
         """Inicializa el modelo de clasificación de texto y retorna el pipeline."""
@@ -31,7 +29,7 @@ class OverviewProcessor(Generic):
 
         return pipeline
 
-    def process_message_batch(self, batch, pipeline, message_counter):
+    def process_message_batch(self, batch, pipeline):
         texts = []
         metadata = []
 
@@ -51,12 +49,12 @@ class OverviewProcessor(Generic):
                 print(f"Error processing message: {e}")
                 continue
 
-            if idx % 10 == 0:
+            if idx % 5 == 0:
                 self.node_instance.consumer.connection.process_data_events(time_limit=0.1)
                 
 
         if not texts:
-            return message_counter
+            return
 
         results = pipeline(texts)
 
@@ -69,10 +67,6 @@ class OverviewProcessor(Generic):
                 routing_key=str(movie_id[-1]),
                 message=row_str
             )
-            message_counter += 1
-
-
-        return message_counter
 
     def callback(self, ch, method, _properties, body):
         if body.decode().startswith(constants.END):
@@ -86,8 +80,8 @@ class OverviewProcessor(Generic):
 
             if self.clients_ended[client] == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
-                if self.batch:
-                    self.message_counter = self.process_message_batch(self.batch, self.pipeline, self.message_counter)                
+                if self.batch[client]:
+                    self.process_message_batch(self.batch[client], self.pipeline)                
                 self.node_instance.send_end_message_to_all_binds(client)
 
                 
@@ -105,12 +99,17 @@ class OverviewProcessor(Generic):
 
 
                 body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}"
-                self.batch.append((method, body))
+                if client not in self.batch:
+                    self.batch[client] = []
+                if client not in self.last_time:
+                    self.last_time[client] = time.time()
+                
+                self.batch[client].append((method, body))
 
-                if len(self.batch) >= BATCH_SIZE or (time.time() - self.last_time >= BATCH_TIMEOUT):
-                    self.message_counter = self.process_message_batch(self.batch, self.pipeline, self.message_counter)
-                    self.batch = []
-                    self.last_time = time.time()
+                if len(self.batch[client]) >= BATCH_SIZE or (time.time() - self.last_time[client] >= BATCH_TIMEOUT):
+                    self.process_message_batch(self.batch[client], self.pipeline)
+                    self.batch[client] = []
+                    self.last_time[client] = time.time()
         
 
 if __name__ == '__main__':
