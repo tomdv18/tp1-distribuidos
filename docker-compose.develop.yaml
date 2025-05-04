@@ -20,7 +20,7 @@ services:
     restart: on-failure
     environment:
     - PYTHONUNBUFFERED=1
-    - EOF=5
+    - EOF=6
     depends_on:
       filter_spain_argentina_1:
         condition: service_started
@@ -34,18 +34,18 @@ services:
         condition: service_started
       filter_argentina_2:
         condition: service_started
-      #overview_1:
-      #  condition: service_healthy
-      #overview_2:
-      #  condition: service_healthy
+      overview_1:
+        condition: service_healthy
+      overview_2:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
-  #model_downloader:
-  #  build:
-  #    context: ./model_downloader
-  #    dockerfile: model_downloader.dockerfile
-  #  volumes:
-  #  - ./model_downloader/model_volume:/models
+  model_downloader:
+    build:
+      context: ./model_downloader
+      dockerfile: model_downloader.dockerfile
+    volumes:
+    - ./model_downloader/model_volume:/models
   average_budget:
     build:
       context: .
@@ -60,20 +60,20 @@ services:
     - CONSUMER_EXCHANGE=overview
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=average_budget
-  #top_budget:
-  #  build:
-  #    context: .
-  #    dockerfile: generic/top_budget/generic.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=0,1,2,3,4,5,6,7,8,9
-  #  - CONSUMER_EXCHANGE=filter_one_prod
-  #  - PUBLISHER_EXCHANGE=results
-  #  - NODE_ID=top_budget
+  top_budget:
+    build:
+      context: .
+      dockerfile: generic/top_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=filter_one_prod
+    - PUBLISHER_EXCHANGE=results
+    - NODE_ID=top_budget
   client_1:
     build:
       context: .
@@ -85,10 +85,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-
-    - MOVIES_FILE=movies1000.csv
-    - RATINGS_FILE=empty.csv
-    - CREDITS_FILE=empty.csv
+    - MOVIES_FILE=movies_metadata1000.csv
+    - RATINGS_FILE=ratings20%.csv
+    - CREDITS_FILE=credits20%.csv
   client_2:
     build:
       context: .
@@ -100,9 +99,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - MOVIES_FILE=movies_metadata.csv
-    - RATINGS_FILE=ratings_39999_lines.csv
-    - CREDITS_FILE=mini_credits.csv
+    - MOVIES_FILE=movies_metadata20%.csv
+    - RATINGS_FILE=ratings20%.csv
+    - CREDITS_FILE=credits20%.csv
   filter_spain_argentina_1:
     build:
       context: .
@@ -168,7 +167,38 @@ services:
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
   filter_one_prod_1:
-
+    build:
+      context: .
+      dockerfile: filter/filter_one_prod/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_budget:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=filter_one_prod_1
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_one_prod
+  filter_one_prod_2:
+    build:
+      context: .
+      dockerfile: filter/filter_one_prod/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_budget:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=filter_one_prod_2
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_one_prod
+  overview_1:
     build:
       context: .
       dockerfile: generic/overview_processor/generic.dockerfile
@@ -178,8 +208,8 @@ services:
         condition: service_healthy
       average_budget:
         condition: service_started
-      #_downloader:
-      #  condition: service_completed_successfully
+      model_downloader:
+        condition: service_completed_successfully
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
@@ -210,78 +240,28 @@ services:
         condition: service_healthy
       average_budget:
         condition: service_started
-      #model_downloader:
-      #  condition: service_completed_successfully
+      model_downloader:
+        condition: service_completed_successfully
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=overview_2
     - CONSUMER_EXCHANGE=gateway_metadata
-    - PUBLISHER_EXCHANGE=filter_one_prod
-  ##overview_1:
-  ##  build:
-  #    context: .
-  #    dockerfile: generic/overview_processor/generic.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #    average_budget:
-  #      condition: service_started
-  #    model_downloader:
-  #      condition: service_completed_successfully
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=0,1,2,3,4
-  #  - NODE_ID=overview_1
-  #  - CONSUMER_EXCHANGE=gateway_metadata
-  #  - PUBLISHER_EXCHANGE=overview
-  #  links:
-  #  - rabbitmq
-  #  volumes:
-  #  - ./model_downloader/model_volume:/models
-  #  healthcheck:
-  #    test:
-  #    - CMD
-  #    - test
-  #    - -f
-  #    - /tmp/model_ready
-  #    interval: 5s
-  #    timeout: 3s
-  #    retries: 10
-  #    start_period: 15s
-  #overview_2:
-  #  build:
-  #    context: .
-  #    dockerfile: generic/overview_processor/generic.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #    average_budget:
-  #      condition: service_started
-  #    model_downloader:
-  #      condition: service_completed_successfully
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=5,6,7,8,9
-  #  - NODE_ID=overview_2
-  #  - CONSUMER_EXCHANGE=gateway_metadata
-  #  - PUBLISHER_EXCHANGE=overview
-  #  links:
-  #  - rabbitmq
-  #  volumes:
-  #  - ./model_downloader/model_volume:/models
-  #  healthcheck:
-  #    test:
-  #    - CMD
-  #    - test
-  #    - -f
-  #    - /tmp/model_ready
-  #    interval: 5s
-  #    timeout: 3s
-  #    retries: 10
-  #    start_period: 15s
+    - PUBLISHER_EXCHANGE=overview
+    links:
+    - rabbitmq
+    volumes:
+    - ./model_downloader/model_volume:/models
+    healthcheck:
+      test:
+      - CMD
+      - test
+      - -f
+      - /tmp/model_ready
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
   filter_argentina_1:
     build:
       context: .
@@ -458,4 +438,3 @@ services:
     - CONSUMER_EXCHANGE=join_credits
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=top_actors
-
