@@ -15,6 +15,10 @@ class TopActors(Generic):
             if client not in self.clients_ended:
                 self.clients_ended[client] = 0
             self.clients_ended[client] += 1
+
+            if client not in self.ocurrences:
+                self.ocurrences[client] = {} 
+            
             if self.clients_ended[client] == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
                 top_ten = sorted(
