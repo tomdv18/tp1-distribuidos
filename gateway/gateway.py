@@ -73,7 +73,7 @@ class CSVProcessor:
                 return None, None
 
             msg = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{countries}{constants.SEPARATOR}{date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}{constants.SEPARATOR}{addr}"
-
+            
         elif self.exchange == 'gateway_ratings':
             if len(row) < 3 or not row[1] or not row[2]:
                 return None, None

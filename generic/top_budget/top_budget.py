@@ -43,7 +43,7 @@ class TopBudget(Generic):
                 self.budgets[client][country_name] += budget
 
     def shutdown(self):
-        self.node_instance.stop_consuming_and_close_connection(0)
+        self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
         print(" [*] Top shutdown.")
             

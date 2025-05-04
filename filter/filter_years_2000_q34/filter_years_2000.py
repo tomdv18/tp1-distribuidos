@@ -8,7 +8,8 @@ class Filter2000s(Filter):
         if int(body_split[1].split("-")[0]) >= 2000:
             movie_id = body_split[0]
             title = body_split[2]
-            row_str = f"{movie_id}{constants.SEPARATOR}{title}"
+            client = body_split[3]
+            row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}"
             return str(movie_id[-1]), row_str
         return None, None
 

@@ -10,6 +10,7 @@ class AverageBudget(Generic):
         super().__init__()
 
     def callback(self, ch, method, _properties, body):
+
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             if client not in self.clients_ended:
