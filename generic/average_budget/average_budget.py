@@ -46,8 +46,12 @@ class AverageBudget(Generic):
             if client not in self.cant:
                 self.cant[client] = {}
 
-            if float(budget) != 0 and float(revenue) != 0:
-                revenue_over_budget = float(revenue) / float(budget)
+            budget = float(budget)
+            revenue = float(revenue)
+
+            if budget != 0 and revenue != 0:
+                revenue_over_budget = revenue / budget
+
                 if sentiment_label not in self.results[client]:
                     self.results[client][sentiment_label] = 0
                 self.results[client][sentiment_label] += revenue_over_budget
@@ -55,6 +59,7 @@ class AverageBudget(Generic):
                 if sentiment_label not in self.cant[client]:
                     self.cant[client][sentiment_label] = 0
                 self.cant[client][sentiment_label] += 1
+
                 
 if __name__ == '__main__':
     AverageBudget()
