@@ -64,9 +64,9 @@ def generate_scaled_services():
             'volumes': ['./client/files:/app/files'],
             'environment': [
                 'PYTHONUNBUFFERED=1',
-                f"ARCHIVO_MOVIES={files['movies']}",
-                f"ARCHIVO_RATINGS={files['ratings']}",
-                f"ARCHIVO_CREDITS={files['credits']}"
+                f"MOVIES_FILE={files['movies']}",
+                f"RATINGS_FILE={files['ratings']}",
+                f"CREDITS_FILE={files['credits']}"
             ]
         }
     for key, count in SERVICE_INSTANCES.items():
