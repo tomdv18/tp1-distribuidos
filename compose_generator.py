@@ -10,6 +10,7 @@ SERVICE_INSTANCES = {
     'join_ratings': 2,
     'join_credits': 2,
     'overview': 2,
+    'top_rating': 2,
     'client': 2
 }
 
@@ -25,7 +26,7 @@ CLIENT_FILES = [
         'credits': 'credits100.csv'
     }
 ]
-IMMUTABLE_SERVICES = ['rabbitmq', 'gateway', 'model_downloader', 'average_budget', 'top_budget', 'top_rating', 'top_actors']
+IMMUTABLE_SERVICES = ['rabbitmq', 'gateway', 'model_downloader', 'average_budget', 'top_budget', 'top_actors', 'aggregator_q3']
 OUTPUT_FILE = 'docker-compose.yaml'
 
 def distribute_binds(binds, count):
@@ -44,8 +45,8 @@ def build_base_services():
         'model_downloader': {'build': {'context': './model_downloader', 'dockerfile': 'model_downloader.dockerfile'}, 'volumes': ['./model_downloader/model_volume:/models']},
         'average_budget': {'build': {'context': '.', 'dockerfile': 'generic/average_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=overview', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=average_budget']},
         'top_budget': {'build': {'context': '.', 'dockerfile': 'generic/top_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=filter_one_prod', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_budget']},
-        'top_rating': {'build': {'context': '.', 'dockerfile': 'generic/top_rating/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_ratings', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_rating']},
         'top_actors': {'build': {'context': '.', 'dockerfile': 'generic/top_actors/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_credits', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_actors']},
+        'aggregator_q3': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q3/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=overview', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q3']}
     }
 
 def generate_scaled_services():
@@ -107,7 +108,8 @@ def generate_scaled_services():
                         for i in range(1, prev+1): depends[f'{join_key}_{i}'] = {'condition': 'service_started'}
                 env += ['CONSUMER_EXCHANGE=filter_argentina', 'PUBLISHER_EXCHANGE=filter_years_2000_q34']
             if key == 'join_ratings':
-                depends['top_rating'] = {'condition': 'service_started'}
+                prev = SERVICE_INSTANCES.get('top_rating', 1)
+                for i in range(1, prev+1): depends[f'top_rating_{i}'] = {'condition': 'service_started'}
                 env += ['CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34', 'CONSUMER_EXCHANGE_JOINED=gateway_ratings', 'PUBLISHER_EXCHANGE=join_ratings']
             if key == 'join_credits':
                 depends['top_actors'] = {'condition': 'service_started'}
@@ -119,6 +121,10 @@ def generate_scaled_services():
             services[name] = {'build': {'context': '.', 'dockerfile': dockerfile}, 'restart': 'on-failure', 'depends_on': depends, 'environment': env}
             if key == 'overview':
                 services[name].update({'links': ['rabbitmq'], 'volumes': ['./model_downloader/model_volume:/models'], 'healthcheck': {'test': ['CMD', 'test', '-f', '/tmp/model_ready'], 'interval': '5s', 'timeout': '3s', 'retries': 10, 'start_period': '15s'}})
+            if key == 'top_rating':
+                depends['aggregator_q3'] = {'condition': 'service_started'}
+                env += ['CONSUMER_EXCHANGE=join_ratings', 'PUBLISHER_EXCHANGE=aggregator_q3']
+
     return services
 
 def assemble_compose():

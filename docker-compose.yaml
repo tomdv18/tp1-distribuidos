@@ -50,6 +50,10 @@ services:
         condition: service_healthy
       overview_2:
         condition: service_healthy
+      top_rating_1:
+        condition: service_started
+      top_rating_2:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
   model_downloader:
@@ -86,20 +90,6 @@ services:
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=top_budget
-  top_rating:
-    build:
-      context: .
-      dockerfile: generic/top_rating/generic.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-    - PYTHONUNBUFFERED=1
-    - BINDS=0,1,2,3,4,5,6,7,8,9
-    - CONSUMER_EXCHANGE=join_ratings
-    - PUBLISHER_EXCHANGE=results
-    - NODE_ID=top_rating
   top_actors:
     build:
       context: .
@@ -114,6 +104,20 @@ services:
     - CONSUMER_EXCHANGE=join_credits
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=top_actors
+  aggregator_q3:
+    build:
+      context: .
+      dockerfile: generic/aggregator_q3/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=overview
+    - PUBLISHER_EXCHANGE=results
+    - NODE_ID=aggregator_q3
   client_1:
     build:
       context: .
@@ -125,9 +129,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - ARCHIVO_MOVIES=movies_metadata20%.csv
-    - ARCHIVO_RATINGS=ratings20%.csv
-    - ARCHIVO_CREDITS=credits20%.csv
+    - MOVIES_FILE=movies_metadata.csv
+    - RATINGS_FILE=ratings_39999_lines.csv
+    - CREDITS_FILE=credits.csv
   client_2:
     build:
       context: .
@@ -139,9 +143,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - ARCHIVO_MOVIES=movies_metadata100.csv
-    - ARCHIVO_RATINGS=ratings50.csv
-    - ARCHIVO_CREDITS=credits100.csv
+    - MOVIES_FILE=movies_metadata.csv
+    - RATINGS_FILE=ratings_39999_lines.csv
+    - CREDITS_FILE=credits.csv
   filter_spain_argentina_1:
     build:
       context: .
@@ -326,7 +330,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      top_rating:
+      top_rating_1:
+        condition: service_started
+      top_rating_2:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
@@ -343,7 +349,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      top_rating:
+      top_rating_1:
+        condition: service_started
+      top_rating_2:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
@@ -450,3 +458,35 @@ services:
       timeout: 3s
       retries: 10
       start_period: 15s
+  top_rating_1:
+    build:
+      context: .
+      dockerfile: generic/top_rating/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q3:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=top_rating_1
+    - CONSUMER_EXCHANGE=join_ratings
+    - PUBLISHER_EXCHANGE=aggregator_q3
+  top_rating_2:
+    build:
+      context: .
+      dockerfile: generic/top_rating/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q3:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=top_rating_2
+    - CONSUMER_EXCHANGE=join_ratings
+    - PUBLISHER_EXCHANGE=aggregator_q3

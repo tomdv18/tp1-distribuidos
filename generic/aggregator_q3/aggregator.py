@@ -1,9 +1,7 @@
 import constants
-import node
-import os
 from generic import Generic
 
-class TopRating(Generic):
+class AggregatorQ3(Generic):
     def __init__(self):
         self.top_rating = {}
         self.worst_rating = {}
@@ -21,14 +19,14 @@ class TopRating(Generic):
                 if client in self.top_rating and client in self.worst_rating:
                     
                     self.node_instance.send_message(
-                        routing_key= str(self.top_rating[client][0][-1]),
-                        message=f"{self.top_rating[client][0]}{constants.SEPARATOR}{self.top_rating[client][1]}{constants.SEPARATOR}{self.top_rating[client][2]}{constants.SEPARATOR}{client}"
+                        routing_key='results',
+                        message=f"Query 3 -> {self.top_rating[client][0]} {self.top_rating[client][1]} {self.top_rating[client][2]}{constants.SEPARATOR}{client}"
                     )
                     self.node_instance.send_message(
-                        routing_key=str(self.worst_rating[client][0][-1]),
-                        message=f"{self.worst_rating[client][0]}{constants.SEPARATOR}{self.worst_rating[client][1]}{constants.SEPARATOR}{self.worst_rating[client][2]}{constants.SEPARATOR}{client}"
+                        routing_key='results',
+                        message=f"Query 3 -> {self.worst_rating[client][0]} {self.worst_rating[client][1]} {self.worst_rating[client][2]}{constants.SEPARATOR}{client}"
                     )
-                self.node_instance.send_end_message_to_all_binds(client)
+                self.node_instance.send_end_message('results', client)
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             movie_id = body_split[0]
@@ -44,7 +42,7 @@ class TopRating(Generic):
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
-        print(" [*] Top shutdown.")
+        print(" [*] Aggregator Q3 shutdown.")
 
 if __name__ == '__main__':
-    TopRating()
+    AggregatorQ3()
