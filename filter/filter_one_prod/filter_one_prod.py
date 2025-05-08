@@ -27,7 +27,7 @@ class FilterOneProd(Filter):
         pass
 
     def end_when_all_binds_end(self, client):
-        self.node_instance.send_end_message_to_all_binds(client)
+        self.node_instance.send_end_message("-1", client)
         
 
 if __name__ == '__main__':

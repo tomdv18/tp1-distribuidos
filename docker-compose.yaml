@@ -508,8 +508,9 @@ services:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
-    - BINDS=0,1,2,3,4
+    - BINDS=0,1,2,3,4,-1
     - NODE_ID=top_budget_1
+    - EOF=2
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=top_budget
   top_budget_2:
@@ -524,8 +525,9 @@ services:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
-    - BINDS=5,6,7,8,9
+    - BINDS=5,6,7,8,9,-1
     - NODE_ID=top_budget_2
+    - EOF=2
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=top_budget
   top_rating_1:

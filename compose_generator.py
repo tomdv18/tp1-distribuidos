@@ -82,6 +82,8 @@ def generate_scaled_services():
         if key == 'client':
             continue
         binds_groups = distribute_binds(TOTAL_BINDS, count)
+        if key == 'top_budget':
+            binds_groups = [group + [-1] for group in binds_groups]
         for idx, binds in enumerate(binds_groups, start=1):
             name = f"{key}_{idx}"
             if key.startswith('filter_'):
@@ -93,6 +95,9 @@ def generate_scaled_services():
             else:
                 dockerfile = f"generic/{key}/generic.dockerfile"
             env = ['PYTHONUNBUFFERED=1', f"BINDS={','.join(map(str, binds))}", f"NODE_ID={key}_{idx}"]
+            if key == 'top_budget':
+                eof_count = SERVICE_INSTANCES.get('filter_one_prod', 0)
+                env.append(f"EOF={eof_count}")
             depends = {'rabbitmq': {'condition': 'service_healthy'}}
             if key == 'filter_spain_argentina':
                 prev = SERVICE_INSTANCES.get('filter_years_2000_q1', 1)

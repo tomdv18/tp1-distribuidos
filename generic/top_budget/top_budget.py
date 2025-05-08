@@ -17,7 +17,7 @@ class TopBudget(Generic):
                 self.clients_ended[client] = 0
             self.clients_ended[client] += 1
 
-            if self.clients_ended[client] == self.node_instance.total_binds():
+            if self.clients_ended[client] == int(os.getenv("EOF", "0")):
                 print(f" [*] Client {client} finished all binds.")
                 top_five = sorted(
                     self.budgets[client].items(),
@@ -25,7 +25,7 @@ class TopBudget(Generic):
                 )[:5]
                 for country, budget in top_five:
                     self.node_instance.send_message(
-                        routing_key=method.routing_key,
+                        routing_key="1",
                         message=f"{country}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}"
                     )
                     print(f" [*] Sending top 5 client {client}: {country} - {budget}")
