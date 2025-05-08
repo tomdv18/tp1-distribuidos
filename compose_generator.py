@@ -11,22 +11,24 @@ SERVICE_INSTANCES = {
     'join_credits': 2,
     'overview': 2,
     'top_rating': 2,
+    'top_actors': 2,
+    'average_budget': 2,
     'client': 2
 }
 
 CLIENT_FILES = [
     {
-        'movies': 'movies_metadata20%.csv',
-        'ratings': 'ratings20%.csv',
-        'credits': 'credits20%.csv'
+        'movies': 'movies_metadata.csv',
+        'ratings': 'ratings_39999_lines.csv',
+        'credits': 'credits.csv'
     },
     {
-        'movies': 'movies_metadata100.csv',
-        'ratings': 'ratings50.csv',
-        'credits': 'credits100.csv'
+        'movies': 'movies_metadata.csv',
+        'ratings': 'ratings_39999_lines.csv',
+        'credits': 'credits.csv'
     }
 ]
-IMMUTABLE_SERVICES = ['rabbitmq', 'gateway', 'model_downloader', 'average_budget', 'top_budget', 'top_actors', 'aggregator_q3']
+IMMUTABLE_SERVICES = ['rabbitmq', 'gateway', 'model_downloader', 'top_budget', 'aggregator_q3', 'aggregator_q4', 'aggregator_q5']
 OUTPUT_FILE = 'docker-compose.yaml'
 
 def distribute_binds(binds, count):
@@ -43,10 +45,10 @@ def build_base_services():
         'rabbitmq': {'build': {'context': './rabbitmq', 'dockerfile': 'rabbitmq.dockerfile'}, 'ports': ['15672:15672'], 'healthcheck': {'test': ['CMD', 'rabbitmqctl', 'status'], 'interval': '10s', 'timeout': '5s', 'retries': 5}},
         'gateway': {'build': {'context': '.', 'dockerfile': 'gateway/gateway.dockerfile'}, 'restart': 'on-failure', 'environment': ['PYTHONUNBUFFERED=1']},
         'model_downloader': {'build': {'context': './model_downloader', 'dockerfile': 'model_downloader.dockerfile'}, 'volumes': ['./model_downloader/model_volume:/models']},
-        'average_budget': {'build': {'context': '.', 'dockerfile': 'generic/average_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=overview', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=average_budget']},
         'top_budget': {'build': {'context': '.', 'dockerfile': 'generic/top_budget/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=filter_one_prod', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_budget']},
-        'top_actors': {'build': {'context': '.', 'dockerfile': 'generic/top_actors/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=join_credits', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=top_actors']},
-        'aggregator_q3': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q3/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=overview', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q3']}
+        'aggregator_q3': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q3/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=top_rating', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q3']},
+        'aggregator_q4': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q4/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=top_actors', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q4']},
+        'aggregator_q5': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q5/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=average_budget', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q5']}
     }
 
 def generate_scaled_services():
@@ -112,10 +114,12 @@ def generate_scaled_services():
                 for i in range(1, prev+1): depends[f'top_rating_{i}'] = {'condition': 'service_started'}
                 env += ['CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34', 'CONSUMER_EXCHANGE_JOINED=gateway_ratings', 'PUBLISHER_EXCHANGE=join_ratings']
             if key == 'join_credits':
-                depends['top_actors'] = {'condition': 'service_started'}
+                prev = SERVICE_INSTANCES.get('top_actors', 1)
+                for i in range(1, prev+1): depends[f'top_actors_{i}'] = {'condition': 'service_started'}
                 env += ['CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34', 'CONSUMER_EXCHANGE_JOINED=gateway_credits', 'PUBLISHER_EXCHANGE=join_credits']
             if key == 'overview':
-                depends['average_budget'] = {'condition': 'service_started'}
+                prev = SERVICE_INSTANCES.get('average_budget', 1)
+                for i in range(1, prev+1): depends[f'average_budget_{i}'] = {'condition': 'service_started'}
                 depends['model_downloader'] = {'condition': 'service_completed_successfully'}
                 env += ['CONSUMER_EXCHANGE=gateway_metadata', 'PUBLISHER_EXCHANGE=overview']
             services[name] = {'build': {'context': '.', 'dockerfile': dockerfile}, 'restart': 'on-failure', 'depends_on': depends, 'environment': env}
@@ -123,7 +127,13 @@ def generate_scaled_services():
                 services[name].update({'links': ['rabbitmq'], 'volumes': ['./model_downloader/model_volume:/models'], 'healthcheck': {'test': ['CMD', 'test', '-f', '/tmp/model_ready'], 'interval': '5s', 'timeout': '3s', 'retries': 10, 'start_period': '15s'}})
             if key == 'top_rating':
                 depends['aggregator_q3'] = {'condition': 'service_started'}
-                env += ['CONSUMER_EXCHANGE=join_ratings', 'PUBLISHER_EXCHANGE=aggregator_q3']
+                env += ['CONSUMER_EXCHANGE=join_ratings', 'PUBLISHER_EXCHANGE=top_rating']
+            if key == 'top_actors':
+                depends['aggregator_q4'] = {'condition': 'service_started'}
+                env += ['CONSUMER_EXCHANGE=join_credits', 'PUBLISHER_EXCHANGE=top_actors']
+            if key == 'average_budget':
+                depends['aggregator_q5'] = {'condition': 'service_started'}
+                env += ['CONSUMER_EXCHANGE=overview', 'PUBLISHER_EXCHANGE=average_budget']
 
     return services
 

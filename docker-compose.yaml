@@ -54,6 +54,14 @@ services:
         condition: service_started
       top_rating_2:
         condition: service_started
+      top_actors_1:
+        condition: service_started
+      top_actors_2:
+        condition: service_started
+      average_budget_1:
+        condition: service_started
+      average_budget_2:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
   model_downloader:
@@ -62,20 +70,6 @@ services:
       dockerfile: model_downloader.dockerfile
     volumes:
     - ./model_downloader/model_volume:/models
-  average_budget:
-    build:
-      context: .
-      dockerfile: generic/average_budget/generic.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-    - PYTHONUNBUFFERED=1
-    - BINDS=0,1,2,3,4,5,6,7,8,9
-    - CONSUMER_EXCHANGE=overview
-    - PUBLISHER_EXCHANGE=results
-    - NODE_ID=average_budget
   top_budget:
     build:
       context: .
@@ -90,20 +84,6 @@ services:
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=top_budget
-  top_actors:
-    build:
-      context: .
-      dockerfile: generic/top_actors/generic.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-    - PYTHONUNBUFFERED=1
-    - BINDS=0,1,2,3,4,5,6,7,8,9
-    - CONSUMER_EXCHANGE=join_credits
-    - PUBLISHER_EXCHANGE=results
-    - NODE_ID=top_actors
   aggregator_q3:
     build:
       context: .
@@ -115,9 +95,37 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4,5,6,7,8,9
-    - CONSUMER_EXCHANGE=overview
+    - CONSUMER_EXCHANGE=top_rating
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=aggregator_q3
+  aggregator_q4:
+    build:
+      context: .
+      dockerfile: generic/aggregator_q4/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=top_actors
+    - PUBLISHER_EXCHANGE=results
+    - NODE_ID=aggregator_q4
+  aggregator_q5:
+    build:
+      context: .
+      dockerfile: generic/aggregator_q5/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=average_budget
+    - PUBLISHER_EXCHANGE=results
+    - NODE_ID=aggregator_q5
   client_1:
     build:
       context: .
@@ -368,7 +376,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      top_actors:
+      top_actors_1:
+        condition: service_started
+      top_actors_2:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
@@ -385,7 +395,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      top_actors:
+      top_actors_1:
+        condition: service_started
+      top_actors_2:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
@@ -402,7 +414,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      average_budget:
+      average_budget_1:
+        condition: service_started
+      average_budget_2:
         condition: service_started
       model_downloader:
         condition: service_completed_successfully
@@ -434,7 +448,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      average_budget:
+      average_budget_1:
+        condition: service_started
+      average_budget_2:
         condition: service_started
       model_downloader:
         condition: service_completed_successfully
@@ -473,7 +489,7 @@ services:
     - BINDS=0,1,2,3,4
     - NODE_ID=top_rating_1
     - CONSUMER_EXCHANGE=join_ratings
-    - PUBLISHER_EXCHANGE=aggregator_q3
+    - PUBLISHER_EXCHANGE=top_rating
   top_rating_2:
     build:
       context: .
@@ -489,4 +505,68 @@ services:
     - BINDS=5,6,7,8,9
     - NODE_ID=top_rating_2
     - CONSUMER_EXCHANGE=join_ratings
-    - PUBLISHER_EXCHANGE=aggregator_q3
+    - PUBLISHER_EXCHANGE=top_rating
+  top_actors_1:
+    build:
+      context: .
+      dockerfile: generic/top_actors/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q4:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=top_actors_1
+    - CONSUMER_EXCHANGE=join_credits
+    - PUBLISHER_EXCHANGE=top_actors
+  top_actors_2:
+    build:
+      context: .
+      dockerfile: generic/top_actors/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q4:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=top_actors_2
+    - CONSUMER_EXCHANGE=join_credits
+    - PUBLISHER_EXCHANGE=top_actors
+  average_budget_1:
+    build:
+      context: .
+      dockerfile: generic/average_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q5:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=average_budget_1
+    - CONSUMER_EXCHANGE=overview
+    - PUBLISHER_EXCHANGE=average_budget
+  average_budget_2:
+    build:
+      context: .
+      dockerfile: generic/average_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q5:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=average_budget_2
+    - CONSUMER_EXCHANGE=overview
+    - PUBLISHER_EXCHANGE=average_budget
