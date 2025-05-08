@@ -32,6 +32,8 @@ class TopActors(Generic):
                     )
 
                 self.node_instance.send_end_message_to_all_binds(client)
+                self.ocurrences.pop(client, None)
+                self.clients_ended.pop(client, None)
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             id = body_split[0]

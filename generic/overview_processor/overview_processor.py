@@ -83,6 +83,9 @@ class OverviewProcessor(Generic):
                 if self.batch[client]:
                     self.process_message_batch(self.batch[client], self.pipeline)                
                 self.node_instance.send_end_message_to_all_binds(client)
+                self.batch.pop(client, None)
+                self.last_time.pop(client, None)
+                self.clients_ended.pop(client, None)                
 
                 
         else:

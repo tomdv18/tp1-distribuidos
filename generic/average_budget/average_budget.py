@@ -33,6 +33,9 @@ class AverageBudget(Generic):
                             message=f"{sentiment_label}{constants.SEPARATOR}{average}{constants.SEPARATOR}{count}{constants.SEPARATOR}{client}"
                         )
                 self.node_instance.send_end_message_to_all_binds(client)
+                self.results.pop(client, None)
+                self.cant.pop(client, None)
+                self.clients_ended.pop(client, None)
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)

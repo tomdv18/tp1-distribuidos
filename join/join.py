@@ -49,6 +49,12 @@ class Join:
     def send_pending(self, client):
         raise NotImplementedError("Subclass responsibility")
     
+    def remove_client(self, client):
+        self.clients_ended_joined.pop(client, None)
+        self.clients_ended_metadata.pop(client, None)
+        self.results.pop(client, None)
+        self.waiting.pop(client, None)
+    
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()

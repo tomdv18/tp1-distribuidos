@@ -35,6 +35,7 @@ class JoinRatings(Join):
 
     def send_pending(self, client):
         if client in self.finished:
+            self.remove_client(client)
             return
         for movie_id, ratings in self.waiting[client].items():
             if movie_id in self.results[client]:
@@ -53,6 +54,7 @@ class JoinRatings(Join):
                 )
         self.node_instance.send_end_message_to_all_binds(client)
         self.finished.append(client)
+        self.remove_client(client)
 
 if __name__ == '__main__':
     JoinRatings()

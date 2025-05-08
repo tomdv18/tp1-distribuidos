@@ -31,6 +31,8 @@ class AggregatorQ4(Generic):
                         message=f"Query 4 -> {id} {count} {name}{constants.SEPARATOR}{client}"
                     )
                 self.node_instance.send_end_message('results', client)
+                self.ocurrences.pop(client, None)
+                self.clients_ended.pop(client, None)
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             id = body_split[0]

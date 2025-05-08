@@ -13,7 +13,7 @@ SERVICE_INSTANCES = {
     'top_budget': 2,
     'top_rating': 2,
     'top_actors': 2,
-    'average_budget': 1,
+    'average_budget': 2,
     'client': 2
 }
 

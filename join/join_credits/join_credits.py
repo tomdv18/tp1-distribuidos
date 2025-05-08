@@ -39,10 +39,12 @@ class JoinCredits(Join):
 
     def send_pending(self, client):
         if client in self.finished:
+            self.remove_client(client)
             return
         if client not in self.waiting:
             self.node_instance.send_end_message_to_all_binds(client)
             self.finished.append(client)
+            self.remove_client(client)
             return
         for movie_id, actors in self.waiting[client].items():
             if movie_id in self.results[client]:
@@ -54,6 +56,7 @@ class JoinCredits(Join):
                     )
         self.node_instance.send_end_message_to_all_binds(client)
         self.finished.append(client)
+        self.remove_client(client)
 
 if __name__ == '__main__':
     JoinCredits()

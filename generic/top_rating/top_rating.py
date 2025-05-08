@@ -29,6 +29,9 @@ class TopRating(Generic):
                         message=f"{self.worst_rating[client][0]}{constants.SEPARATOR}{self.worst_rating[client][1]}{constants.SEPARATOR}{self.worst_rating[client][2]}{constants.SEPARATOR}{client}"
                     )
                 self.node_instance.send_end_message_to_all_binds(client)
+                self.top_rating.pop(client, None)
+                self.worst_rating.pop(client, None)
+                self.clients_ended.pop(client, None)
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             movie_id = body_split[0]

@@ -34,6 +34,9 @@ class AggregatorQ5(Generic):
                             message=f"Query 5 -> {sentiment_label} {average}{constants.SEPARATOR}{client}"
                         )
                 self.node_instance.send_end_message('results', client)
+                self.results.pop(client, None)
+                self.cant.pop(client, None)
+                self.clients_ended.pop(client, None)
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)

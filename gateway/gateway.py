@@ -148,7 +148,7 @@ class Gateway:
 
         self.results = {}
         self.eof_count = 0
-        self.client_finished = {}
+        self.client_finished = 0
         self.consumer = QueueManagerConsumer()
         self.consumer.declare_exchange(exchange_name='results', exchange_type='direct')
         self.queue = self.consumer.queue_declare(queue_name='')
@@ -231,11 +231,9 @@ class Gateway:
             if msg.startswith(constants.END):
                 client = msg[len(constants.END):].strip()
                 if client == str(addr):
-                    if addr not in self.client_finished:
-                        self.client_finished[addr] = 0
-                    self.client_finished[addr] += 1
-                    log(f"[*] Client {addr} send finished {self.client_finished[addr]} times. Expected {EOF_WAITING}")
-                    if self.client_finished[addr] == EOF_WAITING:
+                    self.client_finished += 1
+                    log(f"[*] Client {addr} send finished {self.client_finished} times. Expected {EOF_WAITING}")
+                    if self.client_finished == EOF_WAITING:
                         log(f"[*] Received EOF for client {addr}")
                         self.consumer.stop_consuming()
                         self.consumer.close_connection()
