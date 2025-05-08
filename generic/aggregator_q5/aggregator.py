@@ -39,7 +39,8 @@ class AggregatorQ5(Generic):
             body_split = body.decode().split(constants.SEPARATOR)
             sentiment_label = body_split[0]
             average = float(body_split[1])
-            client = body_split[2]
+            count = int(body_split[2])
+            client = body_split[3]
 
             if client not in self.results:
                 self.results[client] = {}
@@ -49,11 +50,11 @@ class AggregatorQ5(Generic):
 
             if sentiment_label not in self.results[client]:
                 self.results[client][sentiment_label] = 0
-            self.results[client][sentiment_label] += average
+            self.results[client][sentiment_label] += average*count
 
             if sentiment_label not in self.cant[client]:
                 self.cant[client][sentiment_label] = 0
-            self.cant[client][sentiment_label] += 1
+            self.cant[client][sentiment_label] += count
 
                 
 if __name__ == '__main__':

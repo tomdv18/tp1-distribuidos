@@ -30,7 +30,7 @@ class AverageBudget(Generic):
                         average = self.results[client][sentiment_label] / count
                         self.node_instance.send_message(
                             routing_key=method.routing_key,
-                            message=f"{sentiment_label}{constants.SEPARATOR}{average}{constants.SEPARATOR}{client}"
+                            message=f"{sentiment_label}{constants.SEPARATOR}{average}{constants.SEPARATOR}{count}{constants.SEPARATOR}{client}"
                         )
                 self.node_instance.send_end_message_to_all_binds(client)
 
