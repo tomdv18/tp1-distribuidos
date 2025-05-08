@@ -22,6 +22,13 @@ class FilterOneProd(Filter):
             ord(char) for char in country_name
         )
         return number % 10
+    
+    def end_when_bind_ends(self, bind, client):
+        pass
+
+    def end_when_all_binds_end(self, client):
+        self.node_instance.send_end_message_to_all_binds(client)
+        
 
 if __name__ == '__main__':
     FilterOneProd()

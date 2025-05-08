@@ -6,7 +6,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TextClassificationPipeline
 from generic import Generic
 
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 16))
 BATCH_TIMEOUT = float(os.getenv("BATCH_TIMEOUT", 20.0))
 
 class OverviewProcessor(Generic):
@@ -49,7 +49,7 @@ class OverviewProcessor(Generic):
                 print(f"Error processing message: {e}")
                 continue
 
-            if idx % 5 == 0:
+            if idx % 3 == 0:
                 self.node_instance.consumer.connection.process_data_events(time_limit=0.1)
                 
 

@@ -28,6 +28,7 @@ class TopBudget(Generic):
                         routing_key=method.routing_key,
                         message=f"{country}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}"
                     )
+                    print(f" [*] Sending top 5 client {client}: {country} - {budget}")
                 self.node_instance.send_end_message_to_all_binds(client)
                 self.budgets.pop(client, None)
                 self.clients_ended.pop(client, None)
@@ -37,6 +38,7 @@ class TopBudget(Generic):
             country_name = body_split[0]
             budget = int(body_split[1]) 
             client = body_split[2]
+            print(f" [*] Received message from {client}: {country_name} - {budget}")
             if client not in self.budgets:
                 self.budgets[client] = {}
             if country_name not in self.budgets[client]:

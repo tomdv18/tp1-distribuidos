@@ -281,7 +281,7 @@ def run_server():
         srv.listen()
         log(f"[*] Listening on {HOST}:{PORT}")
 
-        with Pool(processes=4) as pool:
+        with Pool(processes=10) as pool:
             try:
                 while True:
                     conn, addr = srv.accept()

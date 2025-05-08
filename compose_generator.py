@@ -14,19 +14,24 @@ SERVICE_INSTANCES = {
     'top_rating': 2,
     'top_actors': 2,
     'average_budget': 2,
-    'client': 2
+    'client': 3
 }
 
 CLIENT_FILES = [
     {
-        'movies': 'movies_metadata.csv',
-        'ratings': 'ratings_39999_lines.csv',
-        'credits': 'credits.csv'
+        'movies': 'movies20.csv',
+        'ratings': 'ratings20.csv',
+        'credits': 'credits20.csv'
     },
     {
-        'movies': 'movies_metadata.csv',
-        'ratings': 'ratings_39999_lines.csv',
-        'credits': 'credits.csv'
+        'movies': 'movies20.csv',
+        'ratings': 'ratings20.csv',
+        'credits': 'credits20.csv'
+    },
+    {
+        'movies': 'movies21.csv',
+        'ratings': 'ratings21.csv',
+        'credits': 'credits21.csv'
     }
 ]
 IMMUTABLE_SERVICES = ['rabbitmq', 'gateway', 'model_downloader', 'aggregator_q2', 'aggregator_q3', 'aggregator_q4', 'aggregator_q5']

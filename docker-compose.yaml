@@ -141,9 +141,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - MOVIES_FILE=movies_metadata.csv
-    - RATINGS_FILE=ratings_39999_lines.csv
-    - CREDITS_FILE=credits.csv
+    - MOVIES_FILE=movies20.csv
+    - RATINGS_FILE=ratings20.csv
+    - CREDITS_FILE=credits20.csv
   client_2:
     build:
       context: .
@@ -155,9 +155,23 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - MOVIES_FILE=movies_metadata.csv
-    - RATINGS_FILE=ratings_39999_lines.csv
-    - CREDITS_FILE=credits.csv
+    - MOVIES_FILE=movies20.csv
+    - RATINGS_FILE=ratings20.csv
+    - CREDITS_FILE=credits20.csv
+  client_3:
+    build:
+      context: .
+      dockerfile: client/client.dockerfile
+    depends_on:
+      gateway:
+        condition: service_started
+    volumes:
+    - ./client/files:/app/files
+    environment:
+    - PYTHONUNBUFFERED=1
+    - MOVIES_FILE=movies21.csv
+    - RATINGS_FILE=ratings21.csv
+    - CREDITS_FILE=credits21.csv
   filter_spain_argentina_1:
     build:
       context: .
