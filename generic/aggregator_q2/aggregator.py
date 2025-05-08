@@ -3,7 +3,7 @@ import node
 import os
 from generic import Generic
 
-class TopBudget(Generic):
+class AggregatorQ2(Generic):
     def __init__(self):
         self.budgets = {}
         super().__init__()
@@ -25,10 +25,10 @@ class TopBudget(Generic):
                 )[:5]
                 for country, budget in top_five:
                     self.node_instance.send_message(
-                        routing_key=method.routing_key,
-                        message=f"{country}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}"
+                        routing_key='results',
+                        message=f"Query 2 -> {country} {budget}{constants.SEPARATOR}{client}"
                     )
-                self.node_instance.send_end_message_to_all_binds(client)
+                self.node_instance.send_end_message('results', client)
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)
@@ -45,8 +45,8 @@ class TopBudget(Generic):
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
-        print(" [*] Top shutdown.")
+        print(" [*] Aggregator Q2 shutdown.")
             
 
 if __name__ == '__main__':
-    TopBudget()
+    AggregatorQ2()

@@ -50,6 +50,10 @@ services:
         condition: service_healthy
       overview_2:
         condition: service_healthy
+      top_budget_1:
+        condition: service_started
+      top_budget_2:
+        condition: service_started
       top_rating_1:
         condition: service_started
       top_rating_2:
@@ -62,6 +66,8 @@ services:
         condition: service_started
       average_budget_2:
         condition: service_started
+      average_budget_3:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
   model_downloader:
@@ -70,10 +76,10 @@ services:
       dockerfile: model_downloader.dockerfile
     volumes:
     - ./model_downloader/model_volume:/models
-  top_budget:
+  aggregator_q2:
     build:
       context: .
-      dockerfile: generic/top_budget/generic.dockerfile
+      dockerfile: generic/aggregator_q2/generic.dockerfile
     restart: on-failure
     depends_on:
       rabbitmq:
@@ -81,9 +87,9 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4,5,6,7,8,9
-    - CONSUMER_EXCHANGE=filter_one_prod
+    - CONSUMER_EXCHANGE=top_budget
     - PUBLISHER_EXCHANGE=results
-    - NODE_ID=top_budget
+    - NODE_ID=aggregator_q2
   aggregator_q3:
     build:
       context: .
@@ -226,7 +232,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      top_budget:
+      top_budget_1:
+        condition: service_started
+      top_budget_2:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
@@ -242,7 +250,9 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-      top_budget:
+      top_budget_1:
+        condition: service_started
+      top_budget_2:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
@@ -418,6 +428,8 @@ services:
         condition: service_started
       average_budget_2:
         condition: service_started
+      average_budget_3:
+        condition: service_started
       model_downloader:
         condition: service_completed_successfully
     environment:
@@ -452,6 +464,8 @@ services:
         condition: service_started
       average_budget_2:
         condition: service_started
+      average_budget_3:
+        condition: service_started
       model_downloader:
         condition: service_completed_successfully
     environment:
@@ -474,6 +488,38 @@ services:
       timeout: 3s
       retries: 10
       start_period: 15s
+  top_budget_1:
+    build:
+      context: .
+      dockerfile: generic/top_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=top_budget_1
+    - CONSUMER_EXCHANGE=filter_one_prod
+    - PUBLISHER_EXCHANGE=top_budget
+  top_budget_2:
+    build:
+      context: .
+      dockerfile: generic/top_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=top_budget_2
+    - CONSUMER_EXCHANGE=filter_one_prod
+    - PUBLISHER_EXCHANGE=top_budget
   top_rating_1:
     build:
       context: .
@@ -550,7 +596,7 @@ services:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
-    - BINDS=0,1,2,3,4
+    - BINDS=0,1,2,3
     - NODE_ID=average_budget_1
     - CONSUMER_EXCHANGE=overview
     - PUBLISHER_EXCHANGE=average_budget
@@ -566,7 +612,23 @@ services:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
-    - BINDS=5,6,7,8,9
+    - BINDS=4,5,6
     - NODE_ID=average_budget_2
+    - CONSUMER_EXCHANGE=overview
+    - PUBLISHER_EXCHANGE=average_budget
+  average_budget_3:
+    build:
+      context: .
+      dockerfile: generic/average_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q5:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=7,8,9
+    - NODE_ID=average_budget_3
     - CONSUMER_EXCHANGE=overview
     - PUBLISHER_EXCHANGE=average_budget
