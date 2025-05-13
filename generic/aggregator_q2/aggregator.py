@@ -3,7 +3,7 @@ import node
 import os
 from generic import Generic
 
-class TopBudget(Generic):
+class AggregatorQ2(Generic):
     def __init__(self):
         self.budgets = {}
         super().__init__()
@@ -17,7 +17,7 @@ class TopBudget(Generic):
                 self.clients_ended[client] = 0
             self.clients_ended[client] += 1
 
-            if self.clients_ended[client] == int(os.getenv("EOF", "0")):
+            if self.clients_ended[client] == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
                 top_five = sorted(
                     self.budgets[client].items(),
@@ -25,11 +25,10 @@ class TopBudget(Generic):
                 )[:5]
                 for country, budget in top_five:
                     self.node_instance.send_message(
-                        routing_key="1",
-                        message=f"{country}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}"
+                        routing_key='results',
+                        message=f"Query 2 -> {country} {budget}{constants.SEPARATOR}{client}"
                     )
-                    print(f" [*] Sending top 5 client {client}: {country} - {budget}")
-                self.node_instance.send_end_message_to_all_binds(client)
+                self.node_instance.send_end_message('results', client)
                 self.budgets.pop(client, None)
                 self.clients_ended.pop(client, None)
 
@@ -48,8 +47,8 @@ class TopBudget(Generic):
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
-        print(" [*] Top shutdown.")
+        print(" [*] Aggregator Q2 shutdown.")
             
 
 if __name__ == '__main__':
-    TopBudget()
+    AggregatorQ2()

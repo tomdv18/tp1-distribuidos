@@ -3,7 +3,7 @@ import node
 import os
 from generic import Generic
 
-class TopActors(Generic):
+class AggregatorQ4(Generic):
     def __init__(self):
         self.ocurrences = {}
         super().__init__()
@@ -27,29 +27,29 @@ class TopActors(Generic):
                 )[:10]
                 for id, (count, name) in top_ten:
                     self.node_instance.send_message(
-                        routing_key=str(id[-1]),
-                        message=f"{id}{constants.SEPARATOR}{count}{constants.SEPARATOR}{name}{constants.SEPARATOR}{client}"
+                        routing_key='results',
+                        message=f"Query 4 -> {id} {count} {name}{constants.SEPARATOR}{client}"
                     )
-
-                self.node_instance.send_end_message_to_all_binds(client)
+                self.node_instance.send_end_message('results', client)
                 self.ocurrences.pop(client, None)
                 self.clients_ended.pop(client, None)
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             id = body_split[0]
-            name = body_split[1]
+            count = int(body_split[1])
+            name = body_split[2]
             client = body_split[3]
             if client not in self.ocurrences:
                 self.ocurrences[client] = {}
             if id not in self.ocurrences[client]:
-                self.ocurrences[client][id] = [1, name]
+                self.ocurrences[client][id] = [count, name]
             else:
-                self.ocurrences[client][id][0] += 1
+                self.ocurrences[client][id][0] += count
 
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
-        print(" [*] Top shutdown.")
+        print(" [*] Aggregator Q4 shutdown.")
 
 if __name__ == '__main__':
-    TopActors()
+    AggregatorQ4()

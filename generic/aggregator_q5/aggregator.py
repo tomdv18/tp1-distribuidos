@@ -3,7 +3,7 @@ import node
 import os
 from generic import Generic
 
-class AverageBudget(Generic):
+class AggregatorQ5(Generic):
     def __init__(self):
         self.results = {}
         self.cant = {}
@@ -27,42 +27,38 @@ class AverageBudget(Generic):
                 for sentiment_label in self.results.get(client, {}):
                     count = self.cant[client].get(sentiment_label, 0)
                     if count != 0:
+                        print(f" [*] Sending result for client {client} -> {sentiment_label} {self.results[client][sentiment_label]} / {count}")
                         average = self.results[client][sentiment_label] / count
                         self.node_instance.send_message(
-                            routing_key=method.routing_key,
-                            message=f"{sentiment_label}{constants.SEPARATOR}{average}{constants.SEPARATOR}{count}{constants.SEPARATOR}{client}"
+                            routing_key='results',
+                            message=f"Query 5 -> {sentiment_label} {average}{constants.SEPARATOR}{client}"
                         )
-                self.node_instance.send_end_message_to_all_binds(client)
+                self.node_instance.send_end_message('results', client)
                 self.results.pop(client, None)
                 self.cant.pop(client, None)
                 self.clients_ended.pop(client, None)
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)
-            budget = body_split[1]
-            revenue = body_split[2]
-            sentiment_label = body_split[3]
-            client = body_split[6]
+            sentiment_label = body_split[0]
+            average = float(body_split[1])
+            count = int(body_split[2])
+            client = body_split[3]
 
             if client not in self.results:
                 self.results[client] = {}
             if client not in self.cant:
                 self.cant[client] = {}
 
-            budget = float(budget)
-            revenue = float(revenue)
 
-            if budget != 0 and revenue != 0:
-                revenue_over_budget = revenue / budget
+            if sentiment_label not in self.results[client]:
+                self.results[client][sentiment_label] = 0
+            self.results[client][sentiment_label] += average*count
 
-                if sentiment_label not in self.results[client]:
-                    self.results[client][sentiment_label] = 0
-                self.results[client][sentiment_label] += revenue_over_budget
-
-                if sentiment_label not in self.cant[client]:
-                    self.cant[client][sentiment_label] = 0
-                self.cant[client][sentiment_label] += 1
+            if sentiment_label not in self.cant[client]:
+                self.cant[client][sentiment_label] = 0
+            self.cant[client][sentiment_label] += count
 
                 
 if __name__ == '__main__':
-    AverageBudget()
+    AggregatorQ5()

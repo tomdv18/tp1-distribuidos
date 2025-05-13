@@ -4,15 +4,14 @@ import os
 
 class Generic:
     def __init__(self):
-        self.ended = 0
-
+        self.clients_ended = {}
         self.node_instance = node.Node(
             publisher_exchange = os.getenv("PUBLISHER_EXCHANGE", ""),
             binds = os.getenv("BINDS", "").split(",") if os.getenv("BINDS", "") else [],
             consumer_exchanges_and_callbacks=[
                 (os.getenv("CONSUMER_EXCHANGE", ""), self.callback),
             ],
-            node_id = os.getenv("NODE_ID", "")
+            node_id = os.getenv("NODE_ID", ""),
         )
         self.node_instance.start_consuming()
 

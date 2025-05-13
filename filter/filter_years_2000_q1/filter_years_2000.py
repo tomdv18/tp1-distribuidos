@@ -10,16 +10,18 @@ class Filter2000s(Filter):
             movie_id = body_split[0]
             genres = body_split[2]
             title = body_split[1]
-            row_str = f"Query 1 -> ID: {movie_id} - Title: {title} - Genres: {genres}"
+            client = body_split[4]
+            row_str = f"Query 1 -> ID: {movie_id} - Title: {title} - Genres: {genres}{constants.SEPARATOR}{client}"
             return os.getenv("PUBLISHER_EXCHANGE", ""), row_str
         return None, None
     
-    def end_when_bind_ends(self, bind):
+    def end_when_bind_ends(self, bind, client):
         pass
 
-    def end_when_all_binds_end(self):
+    def end_when_all_binds_end(self, client):
         self.node_instance.send_end_message(
-            os.getenv("PUBLISHER_EXCHANGE", "")
+            os.getenv("PUBLISHER_EXCHANGE", ""),
+            client
         )
 
 if __name__ == '__main__':
