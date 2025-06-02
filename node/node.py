@@ -1,6 +1,8 @@
 from queue_manager.queue_manager import QueueManagerConsumer, QueueManagerPublisher
 import constants
+from still_alive import StillAlive
 import os
+from multiprocessing import Process, Event
 
 class Node:
     def __init__(self, publisher_exchange, binds, consumer_exchanges_and_callbacks, node_id):
@@ -11,8 +13,9 @@ class Node:
         self.ended = [0] * len(consumer_exchanges_and_callbacks)
         self.publisher = self.declare_publisher()
         self.consumer = self.declare_consumer()
+        self.still_alive = StillAlive()
+        self.still_alive.start()
 
-    
     def declare_consumer(self):
         queue_manager_input = QueueManagerConsumer()
         for exchange, callback in self.consumer_exchanges_and_callbacks:
@@ -54,6 +57,7 @@ class Node:
     def stop_consuming_and_close_connection(self):
         self.consumers.stop_consuming()
         self.consumers.close_connection()
+        self.still_alive.stop()
 
     def close_publisher_connection(self):
         self.publisher.close_connection()
@@ -64,5 +68,3 @@ class Node:
             routing_key=routing_key,
             message=message
         )
-         
-        

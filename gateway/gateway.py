@@ -3,10 +3,7 @@ import os
 import csv
 import io
 import ast
-import time
 from multiprocessing import Pool
-import signal
-import sys
 import uuid
 from queue_manager.queue_manager import QueueManagerPublisher, QueueManagerConsumer
 import constants
