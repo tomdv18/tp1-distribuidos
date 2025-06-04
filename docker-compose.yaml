@@ -14,7 +14,7 @@ services:
       timeout: 5s
       retries: 5
 
-  health_checker:
+  health_checker_1:
     build:
       context: .
       dockerfile: health_checker/health_checker.dockerfile
@@ -24,7 +24,41 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - PORT=5000
+    - PORT=8000
+    - ID=1
+    - HC_SIZE=3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  health_checker_2:
+    build:
+      context: .
+      dockerfile: health_checker/health_checker.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - PORT=8000
+    - ID=2
+    - HC_SIZE=3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  
+  health_checker_3:
+    build:
+      context: .
+      dockerfile: health_checker/health_checker.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - PORT=8000
+    - ID=3
+    - HC_SIZE=3
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     
@@ -103,6 +137,7 @@ services:
     - CONSUMER_EXCHANGE=top_budget
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=aggregator_q2
+    - HEALTH_CHECK_ID=1
   aggregator_q3:
     build:
       context: .
@@ -117,6 +152,7 @@ services:
     - CONSUMER_EXCHANGE=top_rating
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=aggregator_q3
+    - HEALTH_CHECK_ID=2
   aggregator_q4:
     build:
       context: .
@@ -131,6 +167,7 @@ services:
     - CONSUMER_EXCHANGE=top_actors
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=aggregator_q4
+    - HEALTH_CHECK_ID=3
   aggregator_q5:
     build:
       context: .
@@ -145,6 +182,7 @@ services:
     - CONSUMER_EXCHANGE=average_budget
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=aggregator_q5
+    - HEALTH_CHECK_ID=1
   client_1:
     build:
       context: .
@@ -177,6 +215,7 @@ services:
     - NODE_ID=filter_spain_argentina_1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_spain_argentina
+    - HEALTH_CHECK_ID=2
   filter_spain_argentina_2:
     build:
       context: .
@@ -195,6 +234,7 @@ services:
     - NODE_ID=filter_spain_argentina_2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_spain_argentina
+    - HEALTH_CHECK_ID=3
   filter_years_2000_q1_1:
     build:
       context: .
@@ -209,6 +249,7 @@ services:
     - NODE_ID=filter_years_2000_q1_1
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
+    - HEALTH_CHECK_ID=1
   filter_years_2000_q1_2:
     build:
       context: .
@@ -223,6 +264,7 @@ services:
     - NODE_ID=filter_years_2000_q1_2
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
+    - HEALTH_CHECK_ID=2
   filter_one_prod_1:
     build:
       context: .
@@ -241,6 +283,7 @@ services:
     - NODE_ID=filter_one_prod_1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_one_prod
+    - HEALTH_CHECK_ID=3
   filter_one_prod_2:
     build:
       context: .
@@ -259,6 +302,7 @@ services:
     - NODE_ID=filter_one_prod_2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_one_prod
+    - HEALTH_CHECK_ID=1
   filter_argentina_1:
     build:
       context: .
@@ -277,6 +321,7 @@ services:
     - NODE_ID=filter_argentina_1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_argentina
+    - HEALTH_CHECK_ID=2
   filter_argentina_2:
     build:
       context: .
@@ -295,6 +340,7 @@ services:
     - NODE_ID=filter_argentina_2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_argentina
+    - HEALTH_CHECK_ID=3
   filter_years_2000_q34_1:
     build:
       context: .
@@ -317,6 +363,7 @@ services:
     - NODE_ID=filter_years_2000_q34_1
     - CONSUMER_EXCHANGE=filter_argentina
     - PUBLISHER_EXCHANGE=filter_years_2000_q34
+    - HEALTH_CHECK_ID=1
   filter_years_2000_q34_2:
     build:
       context: .
@@ -339,6 +386,7 @@ services:
     - NODE_ID=filter_years_2000_q34_2
     - CONSUMER_EXCHANGE=filter_argentina
     - PUBLISHER_EXCHANGE=filter_years_2000_q34
+    - HEALTH_CHECK_ID=2
   join_ratings_1:
     build:
       context: .
@@ -358,6 +406,7 @@ services:
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_ratings
     - PUBLISHER_EXCHANGE=join_ratings
+    - HEALTH_CHECK_ID=3
   join_ratings_2:
     build:
       context: .
@@ -377,6 +426,7 @@ services:
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_ratings
     - PUBLISHER_EXCHANGE=join_ratings
+    - HEALTH_CHECK_ID=1
   join_credits_1:
     build:
       context: .
@@ -396,6 +446,7 @@ services:
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_credits
     - PUBLISHER_EXCHANGE=join_credits
+    - HEALTH_CHECK_ID=2
   join_credits_2:
     build:
       context: .
@@ -415,6 +466,7 @@ services:
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_credits
     - PUBLISHER_EXCHANGE=join_credits
+    - HEALTH_CHECK_ID=3
   overview_1:
     build:
       context: .
@@ -435,6 +487,7 @@ services:
     - NODE_ID=overview_1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=overview
+    - HEALTH_CHECK_ID=1
     links:
     - rabbitmq
     volumes:
@@ -469,6 +522,7 @@ services:
     - NODE_ID=overview_2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=overview
+    - HEALTH_CHECK_ID=2
     links:
     - rabbitmq
     volumes:
@@ -500,6 +554,7 @@ services:
     - EOF=2
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=top_budget
+    - HEALTH_CHECK_ID=3
   top_budget_2:
     build:
       context: .
@@ -517,6 +572,7 @@ services:
     - EOF=2
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=top_budget
+    - HEALTH_CHECK_ID=1
   top_rating_1:
     build:
       context: .
@@ -533,6 +589,7 @@ services:
     - NODE_ID=top_rating_1
     - CONSUMER_EXCHANGE=join_ratings
     - PUBLISHER_EXCHANGE=top_rating
+    - HEALTH_CHECK_ID=2
   top_rating_2:
     build:
       context: .
@@ -549,6 +606,7 @@ services:
     - NODE_ID=top_rating_2
     - CONSUMER_EXCHANGE=join_ratings
     - PUBLISHER_EXCHANGE=top_rating
+    - HEALTH_CHECK_ID=3
   top_actors_1:
     build:
       context: .
@@ -565,6 +623,7 @@ services:
     - NODE_ID=top_actors_1
     - CONSUMER_EXCHANGE=join_credits
     - PUBLISHER_EXCHANGE=top_actors
+    - HEALTH_CHECK_ID=1
   top_actors_2:
     build:
       context: .
@@ -581,6 +640,7 @@ services:
     - NODE_ID=top_actors_2
     - CONSUMER_EXCHANGE=join_credits
     - PUBLISHER_EXCHANGE=top_actors
+    - HEALTH_CHECK_ID=2
   average_budget_1:
     build:
       context: .
@@ -597,6 +657,7 @@ services:
     - NODE_ID=average_budget_1
     - CONSUMER_EXCHANGE=overview
     - PUBLISHER_EXCHANGE=average_budget
+    - HEALTH_CHECK_ID=3
   average_budget_2:
     build:
       context: .
@@ -613,3 +674,4 @@ services:
     - NODE_ID=average_budget_2
     - CONSUMER_EXCHANGE=overview
     - PUBLISHER_EXCHANGE=average_budget
+    - HEALTH_CHECK_ID=1
