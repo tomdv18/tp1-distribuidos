@@ -13,6 +13,55 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  health_checker_1:
+    build:
+      context: .
+      dockerfile: health_checker/health_checker.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - PORT=8000
+    - ID=1
+    - HC_SIZE=3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  health_checker_2:
+    build:
+      context: .
+      dockerfile: health_checker/health_checker.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - PORT=8000
+    - ID=2
+    - HC_SIZE=3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  
+  health_checker_3:
+    build:
+      context: .
+      dockerfile: health_checker/health_checker.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - PORT=8000
+    - ID=3
+    - HC_SIZE=3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    
   gateway:
     build:
       context: .
@@ -22,12 +71,6 @@ services:
     - PYTHONUNBUFFERED=1
     - EOF=6
     depends_on:
-      health_checker_1:
-        condition: service_started
-      health_checker_2:
-        condition: service_started
-      health_checker_3:
-        condition: service_started
       filter_spain_argentina_1:
         condition: service_started
       filter_spain_argentina_2:
@@ -140,51 +183,6 @@ services:
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=aggregator_q5
     - HEALTH_CHECK_ID=1
-  health_checker_1:
-    build:
-      context: .
-      dockerfile: health_checker/health_checker.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-    - PYTHONUNBUFFERED=1
-    - PORT=8000
-    - ID=1
-    - HC_SIZE=3
-    volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-  health_checker_2:
-    build:
-      context: .
-      dockerfile: health_checker/health_checker.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-    - PYTHONUNBUFFERED=1
-    - PORT=8000
-    - ID=2
-    - HC_SIZE=3
-    volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-  health_checker_3:
-    build:
-      context: .
-      dockerfile: health_checker/health_checker.dockerfile
-    restart: on-failure
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-    - PYTHONUNBUFFERED=1
-    - PORT=8000
-    - ID=3
-    - HC_SIZE=3
-    volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
   client_1:
     build:
       context: .
@@ -196,37 +194,9 @@ services:
     - ./client/files:/app/files
     environment:
     - PYTHONUNBUFFERED=1
-    - MOVIES_FILE=movies20.csv
-    - RATINGS_FILE=ratings20.csv
-    - CREDITS_FILE=credits20.csv
-  client_2:
-    build:
-      context: .
-      dockerfile: client/client.dockerfile
-    depends_on:
-      gateway:
-        condition: service_started
-    volumes:
-    - ./client/files:/app/files
-    environment:
-    - PYTHONUNBUFFERED=1
-    - MOVIES_FILE=movies20.csv
-    - RATINGS_FILE=ratings20.csv
-    - CREDITS_FILE=credits20.csv
-  client_3:
-    build:
-      context: .
-      dockerfile: client/client.dockerfile
-    depends_on:
-      gateway:
-        condition: service_started
-    volumes:
-    - ./client/files:/app/files
-    environment:
-    - PYTHONUNBUFFERED=1
-    - MOVIES_FILE=movies21.csv
-    - RATINGS_FILE=ratings21.csv
-    - CREDITS_FILE=credits21.csv
+    - MOVIES_FILE=movies_metadata.csv
+    - RATINGS_FILE=ratings.csv
+    - CREDITS_FILE=credits.csv
   filter_spain_argentina_1:
     build:
       context: .
@@ -243,9 +213,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=filter_spain_argentina_1
-    - HEALTH_CHECK_ID=1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_spain_argentina
+    - HEALTH_CHECK_ID=2
   filter_spain_argentina_2:
     build:
       context: .
@@ -262,9 +232,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=filter_spain_argentina_2
-    - HEALTH_CHECK_ID=2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_spain_argentina
+    - HEALTH_CHECK_ID=3
   filter_years_2000_q1_1:
     build:
       context: .
@@ -277,9 +247,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=filter_years_2000_q1_1
-    - HEALTH_CHECK_ID=3
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
+    - HEALTH_CHECK_ID=1
   filter_years_2000_q1_2:
     build:
       context: .
@@ -292,9 +262,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=filter_years_2000_q1_2
-    - HEALTH_CHECK_ID=1
     - CONSUMER_EXCHANGE=filter_spain_argentina
     - PUBLISHER_EXCHANGE=results
+    - HEALTH_CHECK_ID=2
   filter_one_prod_1:
     build:
       context: .
@@ -311,9 +281,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=filter_one_prod_1
-    - HEALTH_CHECK_ID=2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_one_prod
+    - HEALTH_CHECK_ID=3
   filter_one_prod_2:
     build:
       context: .
@@ -330,9 +300,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=filter_one_prod_2
-    - HEALTH_CHECK_ID=3
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_one_prod
+    - HEALTH_CHECK_ID=1
   filter_argentina_1:
     build:
       context: .
@@ -349,9 +319,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=filter_argentina_1
-    - HEALTH_CHECK_ID=1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_argentina
+    - HEALTH_CHECK_ID=2
   filter_argentina_2:
     build:
       context: .
@@ -368,9 +338,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=filter_argentina_2
-    - HEALTH_CHECK_ID=2
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=filter_argentina
+    - HEALTH_CHECK_ID=3
   filter_years_2000_q34_1:
     build:
       context: .
@@ -391,9 +361,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=filter_years_2000_q34_1
-    - HEALTH_CHECK_ID=3
     - CONSUMER_EXCHANGE=filter_argentina
     - PUBLISHER_EXCHANGE=filter_years_2000_q34
+    - HEALTH_CHECK_ID=1
   filter_years_2000_q34_2:
     build:
       context: .
@@ -414,9 +384,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=filter_years_2000_q34_2
-    - HEALTH_CHECK_ID=1
     - CONSUMER_EXCHANGE=filter_argentina
     - PUBLISHER_EXCHANGE=filter_years_2000_q34
+    - HEALTH_CHECK_ID=2
   join_ratings_1:
     build:
       context: .
@@ -433,10 +403,10 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=join_ratings_1
-    - HEALTH_CHECK_ID=2
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_ratings
     - PUBLISHER_EXCHANGE=join_ratings
+    - HEALTH_CHECK_ID=3
   join_ratings_2:
     build:
       context: .
@@ -453,10 +423,10 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=join_ratings_2
-    - HEALTH_CHECK_ID=3
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_ratings
     - PUBLISHER_EXCHANGE=join_ratings
+    - HEALTH_CHECK_ID=1
   join_credits_1:
     build:
       context: .
@@ -473,10 +443,10 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=join_credits_1
-    - HEALTH_CHECK_ID=1
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_credits
     - PUBLISHER_EXCHANGE=join_credits
+    - HEALTH_CHECK_ID=2
   join_credits_2:
     build:
       context: .
@@ -493,10 +463,10 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=join_credits_2
-    - HEALTH_CHECK_ID=2
     - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
     - CONSUMER_EXCHANGE_JOINED=gateway_credits
     - PUBLISHER_EXCHANGE=join_credits
+    - HEALTH_CHECK_ID=3
   overview_1:
     build:
       context: .
@@ -515,9 +485,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=overview_1
-    - HEALTH_CHECK_ID=3
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=overview
+    - HEALTH_CHECK_ID=1
     links:
     - rabbitmq
     volumes:
@@ -550,9 +520,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=overview_2
-    - HEALTH_CHECK_ID=1
     - CONSUMER_EXCHANGE=gateway_metadata
     - PUBLISHER_EXCHANGE=overview
+    - HEALTH_CHECK_ID=2
     links:
     - rabbitmq
     volumes:
@@ -581,10 +551,10 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4,-1
     - NODE_ID=top_budget_1
-    - HEALTH_CHECK_ID=2
     - EOF=2
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=top_budget
+    - HEALTH_CHECK_ID=3
   top_budget_2:
     build:
       context: .
@@ -599,10 +569,10 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9,-1
     - NODE_ID=top_budget_2
-    - HEALTH_CHECK_ID=3
     - EOF=2
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=top_budget
+    - HEALTH_CHECK_ID=1
   top_rating_1:
     build:
       context: .
@@ -617,9 +587,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=top_rating_1
-    - HEALTH_CHECK_ID=1
     - CONSUMER_EXCHANGE=join_ratings
     - PUBLISHER_EXCHANGE=top_rating
+    - HEALTH_CHECK_ID=2
   top_rating_2:
     build:
       context: .
@@ -634,9 +604,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=top_rating_2
-    - HEALTH_CHECK_ID=2
     - CONSUMER_EXCHANGE=join_ratings
     - PUBLISHER_EXCHANGE=top_rating
+    - HEALTH_CHECK_ID=3
   top_actors_1:
     build:
       context: .
@@ -651,9 +621,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=top_actors_1
-    - HEALTH_CHECK_ID=3
     - CONSUMER_EXCHANGE=join_credits
     - PUBLISHER_EXCHANGE=top_actors
+    - HEALTH_CHECK_ID=1
   top_actors_2:
     build:
       context: .
@@ -668,9 +638,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=top_actors_2
-    - HEALTH_CHECK_ID=1
     - CONSUMER_EXCHANGE=join_credits
     - PUBLISHER_EXCHANGE=top_actors
+    - HEALTH_CHECK_ID=2
   average_budget_1:
     build:
       context: .
@@ -685,9 +655,9 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=0,1,2,3,4
     - NODE_ID=average_budget_1
-    - HEALTH_CHECK_ID=2
     - CONSUMER_EXCHANGE=overview
     - PUBLISHER_EXCHANGE=average_budget
+    - HEALTH_CHECK_ID=3
   average_budget_2:
     build:
       context: .
@@ -702,6 +672,6 @@ services:
     - PYTHONUNBUFFERED=1
     - BINDS=5,6,7,8,9
     - NODE_ID=average_budget_2
-    - HEALTH_CHECK_ID=3
     - CONSUMER_EXCHANGE=overview
     - PUBLISHER_EXCHANGE=average_budget
+    - HEALTH_CHECK_ID=1
