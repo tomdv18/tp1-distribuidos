@@ -36,12 +36,12 @@ class OverviewProcessor(Generic):
         for idx, (method, body) in enumerate(batch):
             try:
                 body_split = body.split(constants.SEPARATOR)
-                movie_id, budget, revenue, overview, title, client = body_split
+                movie_id, budget, revenue, overview, title, client, message_id = body_split
 
                 tokenized_text = pipeline.tokenizer(overview, padding=False, truncation=False, return_tensors="pt")
                 if len(tokenized_text['input_ids'][0]) <= pipeline.tokenizer.model_max_length:
                     texts.append(overview)
-                    metadata.append((movie_id, budget, revenue, title, client))
+                    metadata.append((movie_id, budget, revenue, title, client, message_id))
                     print(f"Processing movie {movie_id}: {title}")
                 else:
                     print(f"Skipping movie {movie_id}: Overview too long ({len(tokenized_text['input_ids'][0])} tokens)")
@@ -58,11 +58,11 @@ class OverviewProcessor(Generic):
 
         results = pipeline(texts)
 
-        for result, (movie_id, budget, revenue, title, client) in zip(results, metadata):
+        for result, (movie_id, budget, revenue, title, client, message_id) in zip(results, metadata):
             sentiment_label = result['label']
             sentiment_score = str(result['score'])
 
-            row_str = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{sentiment_label}{constants.SEPARATOR}{sentiment_score}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}"
+            row_str = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{sentiment_label}{constants.SEPARATOR}{sentiment_score}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
             self.node_instance.send_message(
                 routing_key=str(movie_id[-1]),
                 message=row_str
@@ -99,9 +99,10 @@ class OverviewProcessor(Generic):
                 overview = body_split[3]
                 title = body_split[7]
                 client = body_split[8]
+                message_id = body_split[9]
 
 
-                body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}"
+                body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
                 if client not in self.batch:
                     self.batch[client] = []
                 if client not in self.last_time:

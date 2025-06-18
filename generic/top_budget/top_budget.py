@@ -19,16 +19,18 @@ class TopBudget(Generic):
 
             if self.clients_ended[client] == int(os.getenv("EOF", "0")):
                 print(f" [*] Client {client} finished all binds.")
-                top_five = sorted(
-                    self.budgets[client].items(),
-                    key=lambda x: (-x[1], x[0])
-                )[:5]
-                for country, budget in top_five:
-                    self.node_instance.send_message(
-                        routing_key="1",
-                        message=f"{country}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}"
-                    )
-                    print(f" [*] Sending top 5 client {client}: {country} - {budget}")
+                if client in self.budgets:
+                    top_five = sorted(
+                        self.budgets[client].items(),
+                        key=lambda x: (-x[1], x[0])
+                    )[:5]
+                    for country, budget in top_five:
+                        message_id = self.generate_message_id(constants.TOP_BUDGET)
+                        self.node_instance.send_message(
+                            routing_key="1",
+                            message=f"{country}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+                        )
+                        print(f" [*] Sending top 5 client {client}: {country} - {budget}")
                 self.node_instance.send_end_message_to_all_binds(client)
                 self.budgets.pop(client, None)
                 self.clients_ended.pop(client, None)
@@ -38,6 +40,7 @@ class TopBudget(Generic):
             country_name = body_split[0]
             budget = int(body_split[1]) 
             client = body_split[2]
+            message_id = body_split[3]
             if client not in self.budgets:
                 self.budgets[client] = {}
             if country_name not in self.budgets[client]:

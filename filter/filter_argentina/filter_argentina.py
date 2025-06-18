@@ -10,7 +10,8 @@ class FilterArgentina(Filter):
             release_date = body_split[5]
             title = body_split[7]
             client = body_split[8]
-            row_str = f"{movie_id}{constants.SEPARATOR}{release_date}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}"
+            message_id = body_split[9]
+            row_str = f"{movie_id}{constants.SEPARATOR}{release_date}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
             return str(movie_id[-1]), row_str
         return None, None
 

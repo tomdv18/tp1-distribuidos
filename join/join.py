@@ -9,6 +9,7 @@ class Join:
         self.results = {}
         self.waiting = {}
         self.finished = []
+        self.message_count = 0
 
         self.node_instance = node.Node(
             publisher_exchange = os.getenv("PUBLISHER_EXCHANGE", ""),
@@ -38,6 +39,7 @@ class Join:
             movie_id = body_split[0]
             title = body_split[1]
             client = body_split[2]
+            message_id = body_split[3] 
             if client not in self.results:
                 self.results[client] = {}
             if movie_id not in self.results[client]:
@@ -59,6 +61,12 @@ class Join:
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
         print(" [*] Join shutdown.")
+    
+    def generate_message_id(self, prefix):
+        id = f"{prefix}-{self.message_count:07d}"
+        self.message_count += 1 
+        return id
+
         
 if __name__ == '__main__':
     Join()

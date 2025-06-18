@@ -25,7 +25,8 @@ class JoinCredits(Join):
             if client not in self.results:
                 self.results[client] = {}
             if movie_id in self.results[client]:
-                row_str = f"{actor_id}{constants.SEPARATOR}{name}{constants.SEPARATOR}{movie_id}{constants.SEPARATOR}{client}"
+                message_id = self.generate_message_id(constants.JOIN_CREDITS)
+                row_str = f"{actor_id}{constants.SEPARATOR}{name}{constants.SEPARATOR}{movie_id}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
                 self.node_instance.send_message(
                     routing_key=actor_id[-1],
                     message=row_str

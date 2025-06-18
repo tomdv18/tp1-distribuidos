@@ -17,7 +17,7 @@ def log(msg):
     print(f"[PID {os.getpid()}] {msg}")
 
 class CSVProcessor:
-    def __init__(self, publisher, exchange, skip_header=True, log_interval=10000, end_marker=constants.END):
+    def __init__(self, publisher, exchange, id_generator, skip_header=True, log_interval=10000, end_marker=constants.END):
         self.publisher = publisher
         self.exchange = exchange
         self.skip_header = skip_header
@@ -26,6 +26,7 @@ class CSVProcessor:
         self.residual = ''
         self.count = 0
         self.closed = False
+        self.generate_message_id = id_generator
 
     def process(self, text, addr, partial=False):
         if self.closed:
@@ -68,13 +69,15 @@ class CSVProcessor:
             )
             if not all([movie_id, genres, budget, overview, countries, date, revenue, title]):
                 return None, None
-
-            msg = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{countries}{constants.SEPARATOR}{date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}{constants.SEPARATOR}{addr}"
             
+            msg = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{countries}{constants.SEPARATOR}{date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}"
+
         elif self.exchange == 'gateway_ratings':
             if len(row) < 3 or not row[1] or not row[2]:
                 return None, None
-            msg = f"{row[1]}{constants.SEPARATOR}{row[2]}{constants.SEPARATOR}{addr}"
+            msg = f"{row[1]}{constants.SEPARATOR}{row[2]}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}"
+
+
             movie_id = row[1]
         elif self.exchange == 'gateway_credits':
             return None, None
@@ -125,7 +128,9 @@ class CreditsProcessor(CSVProcessor):
                 cast_list = ast.literal_eval(row['cast'])
                 movie_id = row['id']
                 for actor in cast_list:
-                    msg = f"{movie_id}{constants.SEPARATOR}{actor['id']}{constants.SEPARATOR}{actor['name']}{constants.SEPARATOR}{addr}"
+                    msg = f"{movie_id}{constants.SEPARATOR}{actor['id']}{constants.SEPARATOR}{actor['name']}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}"
+        
+
                     key = movie_id[-1]
                     self._publish(key, msg)
             except Exception:
@@ -136,11 +141,18 @@ class CreditsProcessor(CSVProcessor):
 
 class Gateway:
     def __init__(self):
-        self.meta_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_metadata')
+
+        self.message_counters = { # Cuenta los mensajes enviados por exchange
+            'gateway_metadata': 0,
+            'gateway_ratings': 0,
+            'gateway_credits': 0
+        }
+
+        self.meta_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_metadata',id_generator=self.generate_message_id)
         self.meta_proc.publisher.declare_exchange('gateway_metadata', 'direct')
-        self.rate_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_ratings', log_interval=1000000)
+        self.rate_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_ratings', id_generator=self.generate_message_id, log_interval=1000000)
         self.rate_proc.publisher.declare_exchange('gateway_ratings', 'direct')
-        self.cred_proc = CreditsProcessor(QueueManagerPublisher(), 'gateway_credits')
+        self.cred_proc = CreditsProcessor(QueueManagerPublisher(), 'gateway_credits', id_generator=self.generate_message_id)
         self.cred_proc.publisher.declare_exchange('gateway_credits', 'direct')
 
         self.results = {}
@@ -150,6 +162,18 @@ class Gateway:
         self.consumer.declare_exchange(exchange_name='results', exchange_type='direct')
         self.queue = self.consumer.queue_declare(queue_name='')
         self.consumer.queue_bind(exchange_name='results', queue_name=self.queue, routing_key='results')
+
+    def generate_message_id(self, exchange):
+        prefix = {
+            'gateway_metadata': constants.MOVIES_PREFIX,
+            'gateway_ratings': constants.RATINGS_PREFIX,
+            'gateway_credits': constants.CREDITS_PREFIX
+        }.get(exchange, 'X')
+
+        counter = self.message_counters[exchange]
+        self.message_counters[exchange] += 1
+        return f"{prefix}{counter:09d}"
+
 
     def handle_client(self, conn, addr):
         content_buffer = ''
@@ -238,6 +262,7 @@ class Gateway:
 
             if msg.startswith('Query'):
                 msg = msg.split(constants.SEPARATOR)
+                print(f"[*] Received query result: {msg}")
                 if msg[1] == str(addr):
                     if addr not in self.results:
                         self.results[addr] = []

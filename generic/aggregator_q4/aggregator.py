@@ -26,9 +26,10 @@ class AggregatorQ4(Generic):
                     key=lambda x: (-x[1][0], x[1][1])
                 )[:10]
                 for id, (count, name) in top_ten:
+                    message_id = self.generate_message_id(constants.AGGREGATOR_Q4)
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 4 -> {id} {count} {name}{constants.SEPARATOR}{client}"
+                        message=f"Query 4 -> {id} {count} {name}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
                     )
                 self.node_instance.send_end_message('results', client)
                 self.ocurrences.pop(client, None)
@@ -39,6 +40,7 @@ class AggregatorQ4(Generic):
             count = int(body_split[1])
             name = body_split[2]
             client = body_split[3]
+            message_id = body_split[4]
             if client not in self.ocurrences:
                 self.ocurrences[client] = {}
             if id not in self.ocurrences[client]:

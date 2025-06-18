@@ -27,11 +27,12 @@ class AggregatorQ5(Generic):
                 for sentiment_label in self.results.get(client, {}):
                     count = self.cant[client].get(sentiment_label, 0)
                     if count != 0:
+                        message_id = self.generate_message_id(constants.AGGREGATOR_Q5)
                         print(f" [*] Sending result for client {client} -> {sentiment_label} {self.results[client][sentiment_label]} / {count}")
                         average = self.results[client][sentiment_label] / count
                         self.node_instance.send_message(
                             routing_key='results',
-                            message=f"Query 5 -> {sentiment_label} {average}{constants.SEPARATOR}{client}"
+                            message=f"Query 5 -> {sentiment_label} {average}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
                         )
                 self.node_instance.send_end_message('results', client)
                 self.results.pop(client, None)
@@ -44,6 +45,7 @@ class AggregatorQ5(Generic):
             average = float(body_split[1])
             count = int(body_split[2])
             client = body_split[3]
+            message_id = body_split[4]
 
             if client not in self.results:
                 self.results[client] = {}

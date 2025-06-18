@@ -21,6 +21,8 @@ class JoinRatings(Join):
             movie_id = body_split[0]
             rating = body_split[1]
             client = body_split[2]
+            message_id = body_split[3]
+
             if client not in self.results:
                 self.results[client] = {}
             if movie_id in self.results[client]:
@@ -47,7 +49,8 @@ class JoinRatings(Join):
         for movie_id, (title, count, total) in self.results[client].items():
             if count > 0:
                 avg_rating = total / count
-                row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{avg_rating}{constants.SEPARATOR}{client}"
+                message_id = self.generate_message_id(constants.JOIN_RATINGS)
+                row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{avg_rating}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
                 self.node_instance.send_message(
                     routing_key=movie_id[-1],
                     message=row_str

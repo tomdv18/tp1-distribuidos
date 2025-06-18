@@ -26,9 +26,10 @@ class TopActors(Generic):
                     key=lambda x: (-x[1][0], x[1][1])
                 )[:10]
                 for id, (count, name) in top_ten:
+                    message_id = self.generate_message_id(constants.TOP_ACTORS)
                     self.node_instance.send_message(
                         routing_key=str(id[-1]),
-                        message=f"{id}{constants.SEPARATOR}{count}{constants.SEPARATOR}{name}{constants.SEPARATOR}{client}"
+                        message=f"{id}{constants.SEPARATOR}{count}{constants.SEPARATOR}{name}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
                     )
 
                 self.node_instance.send_end_message_to_all_binds(client)
@@ -39,6 +40,7 @@ class TopActors(Generic):
             id = body_split[0]
             name = body_split[1]
             client = body_split[3]
+            message_id = body_split[4]
             if client not in self.ocurrences:
                 self.ocurrences[client] = {}
             if id not in self.ocurrences[client]:

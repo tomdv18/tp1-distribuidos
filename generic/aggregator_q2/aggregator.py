@@ -24,9 +24,10 @@ class AggregatorQ2(Generic):
                     key=lambda x: (-x[1], x[0])
                 )[:5]
                 for country, budget in top_five:
+                    message_id = self.generate_message_id(constants.AGGREGATOR_Q2)
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 2 -> {country} {budget}{constants.SEPARATOR}{client}"
+                        message=f"Query 2 -> {country} {budget}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
                     )
                 self.node_instance.send_end_message('results', client)
                 self.budgets.pop(client, None)
@@ -37,6 +38,7 @@ class AggregatorQ2(Generic):
             country_name = body_split[0]
             budget = int(body_split[1]) 
             client = body_split[2]
+            message_id = body_split[3] # Esto se usaria para chequear duplicados
             if client not in self.budgets:
                 self.budgets[client] = {}
             if country_name not in self.budgets[client]:

@@ -27,10 +27,11 @@ class AverageBudget(Generic):
                 for sentiment_label in self.results.get(client, {}):
                     count = self.cant[client].get(sentiment_label, 0)
                     if count != 0:
+                        message_id = self.generate_message_id(constants.AVERAGE_BUDGET)
                         average = self.results[client][sentiment_label] / count
                         self.node_instance.send_message(
                             routing_key=method.routing_key,
-                            message=f"{sentiment_label}{constants.SEPARATOR}{average}{constants.SEPARATOR}{count}{constants.SEPARATOR}{client}"
+                            message=f"{sentiment_label}{constants.SEPARATOR}{average}{constants.SEPARATOR}{count}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
                         )
                 self.node_instance.send_end_message_to_all_binds(client)
                 self.results.pop(client, None)

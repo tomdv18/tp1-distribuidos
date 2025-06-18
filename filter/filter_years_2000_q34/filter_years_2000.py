@@ -9,7 +9,8 @@ class Filter2000s(Filter):
             movie_id = body_split[0]
             title = body_split[2]
             client = body_split[3]
-            row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}"
+            message_id = body_split[4]
+            row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
             return str(movie_id[-1]), row_str
         return None, None
 

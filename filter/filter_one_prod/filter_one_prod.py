@@ -12,7 +12,8 @@ class FilterOneProd(Filter):
                 country_name = body_split[4].split("'name': \"")[1].split('"')[0]
             budget = body_split[2]
             client = body_split[8]
-            row_str = f"{country_name}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}"
+            message_id = body_split[9]
+            row_str = f"{country_name}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
             key_from_country = self.number_from_country(country_name)
             return str(key_from_country), row_str
         return None, None
