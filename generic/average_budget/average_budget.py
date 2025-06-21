@@ -44,6 +44,10 @@ class AverageBudget(Generic):
             revenue = body_split[2]
             sentiment_label = body_split[3]
             client = body_split[6]
+            message_id = body_split[7]
+            if self.is_repeated(message_id):
+                print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                return
 
             if client not in self.results:
                 self.results[client] = {}

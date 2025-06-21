@@ -15,6 +15,7 @@ class Node:
         self.consumer = self.declare_consumer()
         self.still_alive = StillAlive()
         self.still_alive.start()
+        self.messages_received = []
 
     def declare_consumer(self):
         queue_manager_input = QueueManagerConsumer()
@@ -68,3 +69,5 @@ class Node:
             routing_key=routing_key,
             message=message
         )
+    def is_repeated(self, message):
+        return  str(message) in self.messages_received

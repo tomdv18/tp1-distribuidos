@@ -40,6 +40,9 @@ class TopRating(Generic):
             rating = float(body_split[2])
             client = body_split[3]
             message_id = body_split[4]
+            if self.is_repeated(message_id):
+                print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                return 
         
             if client not in self.top_rating or rating > self.top_rating[client][2]:
                 self.top_rating[client] = (movie_id, title, rating)

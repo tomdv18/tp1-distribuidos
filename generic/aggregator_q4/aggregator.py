@@ -41,6 +41,9 @@ class AggregatorQ4(Generic):
             name = body_split[2]
             client = body_split[3]
             message_id = body_split[4]
+            if self.is_repeated(message_id):
+                print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                return 
             if client not in self.ocurrences:
                 self.ocurrences[client] = {}
             if id not in self.ocurrences[client]:

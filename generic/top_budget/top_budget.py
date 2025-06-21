@@ -41,6 +41,9 @@ class TopBudget(Generic):
             budget = int(body_split[1]) 
             client = body_split[2]
             message_id = body_split[3]
+            if self.is_repeated(message_id):
+                print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                return 
             if client not in self.budgets:
                 self.budgets[client] = {}
             if country_name not in self.budgets[client]:

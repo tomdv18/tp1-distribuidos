@@ -100,6 +100,9 @@ class OverviewProcessor(Generic):
                 title = body_split[7]
                 client = body_split[8]
                 message_id = body_split[9]
+                if self.is_repeated(message_id):
+                    print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                    return 
 
 
                 body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
