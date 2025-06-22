@@ -38,13 +38,17 @@ class AggregatorQ2(Generic):
             country_name = body_split[0]
             budget = int(body_split[1]) 
             client = body_split[2]
-            message_id = body_split[3] # Esto se usaria para chequear duplicados
+            message_id = body_split[3]
+            if self.node_instance.is_repeated(message_id):
+                print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                return 
             if client not in self.budgets:
                 self.budgets[client] = {}
             if country_name not in self.budgets[client]:
                 self.budgets[client][country_name] = budget
             else:
                 self.budgets[client][country_name] += budget
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()

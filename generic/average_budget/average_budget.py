@@ -45,7 +45,7 @@ class AverageBudget(Generic):
             sentiment_label = body_split[3]
             client = body_split[6]
             message_id = body_split[7]
-            if self.is_repeated(message_id):
+            if self.node_instance.is_repeated(message_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 return
 
@@ -67,6 +67,8 @@ class AverageBudget(Generic):
                 if sentiment_label not in self.cant[client]:
                     self.cant[client][sentiment_label] = 0
                 self.cant[client][sentiment_label] += 1
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
                 
 if __name__ == '__main__':

@@ -256,8 +256,14 @@ class Gateway:
                     log(f"[*] Client {addr} send finished {self.client_finished} times. Expected {EOF_WAITING}")
                     if self.client_finished == EOF_WAITING:
                         log(f"[*] Received EOF for client {addr}")
+                        ch.basic_ack(delivery_tag=method.delivery_tag)
+                        print(f"[*] ack last eof for {addr}")
                         self.consumer.stop_consuming()
                         self.consumer.close_connection()
+                        return
+                
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                print(f"Acknowledged EOF for client {addr}")
                 return
 
             if msg.startswith('Query'):
@@ -267,6 +273,9 @@ class Gateway:
                     if addr not in self.results:
                         self.results[addr] = []
                     self.results[addr].append(msg[0])
+                print(f"Ack respuesta query para {addr}")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+
 
         self.consumer.consume_messages(self.queue, callback=cb)
         self.consumer.start_consuming()

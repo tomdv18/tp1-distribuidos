@@ -28,7 +28,7 @@ class QueueManagerConsumer(QueueManager):
 
     def consume_messages(self, queue_name, callback):
         self.channel.basic_consume(
-            queue=queue_name, on_message_callback=callback, auto_ack=True)
+            queue=queue_name, on_message_callback=callback, auto_ack=False)
 
     def start_consuming(self):
         self.channel.start_consuming()

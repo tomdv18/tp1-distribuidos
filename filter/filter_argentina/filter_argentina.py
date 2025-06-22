@@ -11,7 +11,7 @@ class FilterArgentina(Filter):
             title = body_split[7]
             client = body_split[8]
             message_id = body_split[9]
-            if self.is_repeated(message_id):
+            if self.node_instance.is_repeated(message_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 return None, None
             row_str = f"{movie_id}{constants.SEPARATOR}{release_date}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"

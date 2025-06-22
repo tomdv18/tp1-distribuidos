@@ -41,8 +41,9 @@ class TopBudget(Generic):
             budget = int(body_split[1]) 
             client = body_split[2]
             message_id = body_split[3]
-            if self.is_repeated(message_id):
+            if self.node_instance.is_repeated(message_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
             if client not in self.budgets:
                 self.budgets[client] = {}
@@ -50,6 +51,8 @@ class TopBudget(Generic):
                 self.budgets[client][country_name] = budget
             else:
                 self.budgets[client][country_name] += budget
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()

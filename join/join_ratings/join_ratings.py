@@ -22,7 +22,7 @@ class JoinRatings(Join):
             rating = body_split[1]
             client = body_split[2]
             message_id = body_split[3]
-            if self.is_repeated(message_id):
+            if self.node_instance.is_repeated(message_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 return 
 

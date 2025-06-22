@@ -15,7 +15,7 @@ class Filter:
         )
         self.node_instance.start_consuming()
 
-    def callback(self, _ch, method, _properties, body):
+    def callback(self, ch, method, _properties, body):
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
@@ -30,7 +30,6 @@ class Filter:
                 self.end_when_all_binds_end(client)
                 self.clients_ended.pop(client, None)
 
-
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             routing_key, row_str = self.filter(body_split)
@@ -39,6 +38,11 @@ class Filter:
                     routing_key=routing_key,
                     message=row_str
                 )
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        
+
+            
 
     def end_when_bind_ends(self, bind, client):
         self.node_instance.send_end_message(bind, client)

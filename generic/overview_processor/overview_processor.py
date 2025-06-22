@@ -81,11 +81,17 @@ class OverviewProcessor(Generic):
             if self.clients_ended[client] == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
                 if self.batch[client]:
-                    self.process_message_batch(self.batch[client], self.pipeline)                
+                    self.process_message_batch(self.batch[client], self.pipeline)
+                    for m, _ in self.batch[client]:
+                        print(f" [*] ACK for client {client}")
+                        ch.basic_ack(delivery_tag=m.delivery_tag)
+
                 self.node_instance.send_end_message_to_all_binds(client)
                 self.batch.pop(client, None)
                 self.last_time.pop(client, None)
-                self.clients_ended.pop(client, None)                
+                self.clients_ended.pop(client, None)
+            
+            ch.basic_ack(delivery_tag=method.delivery_tag)                
 
                 
         else:
@@ -100,8 +106,9 @@ class OverviewProcessor(Generic):
                 title = body_split[7]
                 client = body_split[8]
                 message_id = body_split[9]
-                if self.is_repeated(message_id):
+                if self.node_instance.is_repeated(message_id):
                     print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
                     return 
 
 
@@ -115,8 +122,14 @@ class OverviewProcessor(Generic):
 
                 if len(self.batch[client]) >= BATCH_SIZE or (time.time() - self.last_time[client] >= BATCH_TIMEOUT):
                     self.process_message_batch(self.batch[client], self.pipeline)
+
+                    for m, _ in self.batch[client]:
+                        print(f" [*] ACK for client {client}")
+                        ch.basic_ack(delivery_tag=m.delivery_tag)
                     self.batch[client] = []
                     self.last_time[client] = time.time()
+            else:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
         
 
 if __name__ == '__main__':

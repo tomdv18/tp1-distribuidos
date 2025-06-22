@@ -15,7 +15,7 @@ class Node:
         self.consumer = self.declare_consumer()
         self.still_alive = StillAlive()
         self.still_alive.start()
-        self.messages_received = []
+        self.last_message_id = 0
 
     def declare_consumer(self):
         queue_manager_input = QueueManagerConsumer()
@@ -70,4 +70,6 @@ class Node:
             message=message
         )
     def is_repeated(self, message):
-        return  str(message) in self.messages_received
+        #return  str(message) in self.messages_received
+        #por ahora return False      
+        return False
