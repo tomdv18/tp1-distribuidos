@@ -9,8 +9,8 @@ class QueueManager:
         self.channel.exchange_declare(
             exchange=exchange_name, exchange_type=exchange_type)
     
-    def queue_declare(self, queue_name, exclusive=True):
-        result = self.channel.queue_declare(queue=queue_name, exclusive=exclusive)
+    def queue_declare(self, queue_name, durable=True):
+        result = self.channel.queue_declare(queue=queue_name, durable=durable)
         return result.method.queue
 
     def close_connection(self):
@@ -19,7 +19,7 @@ class QueueManager:
 class QueueManagerPublisher(QueueManager):
     def publish_message(self, exchange_name, routing_key, message):
         self.channel.basic_publish(
-            exchange=exchange_name, routing_key=routing_key, body=message)
+            exchange=exchange_name, routing_key=routing_key, body=message, properties=pika.BasicProperties(delivery_mode=2))
 
 class QueueManagerConsumer(QueueManager):
     def queue_bind(self, exchange_name, queue_name, routing_key):

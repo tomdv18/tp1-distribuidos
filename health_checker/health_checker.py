@@ -57,7 +57,7 @@ class HealthChecker():
             if int(hc_containers_reset[hc_reset_id][0]) > int(hc_id): # Si el id del HC que estaba es mas grande, actualizo por el mas chico
                 hc_containers_reset[hc_reset_id] = (hc_id, time.time())
 
-    def check_health(self, alive_containers, hc_containers_reset, hc_containers, timeout=20):
+    def check_health(self, alive_containers, hc_containers_reset, hc_containers, timeout=10):
         while True:
             now = time.time()
             for node_id, last_seen in list(alive_containers.items()):
