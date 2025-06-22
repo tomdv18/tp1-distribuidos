@@ -41,12 +41,15 @@ class AggregatorQ3(Generic):
 
             if self.node_instance.is_repeated(message_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
         
             if client not in self.top_rating or rating > self.top_rating[client][2]:
                 self.top_rating[client] = (movie_id, title, rating)
             if client not in self.worst_rating or rating < self.worst_rating[client][2]:
                self.worst_rating[client] = (movie_id, title, rating)
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()

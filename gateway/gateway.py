@@ -140,7 +140,7 @@ class CreditsProcessor(CSVProcessor):
 
 
 class Gateway:
-    def __init__(self):
+    def __init__(self, client_id):
 
         self.message_counters = { # Cuenta los mensajes enviados por exchange
             'gateway_metadata': 0,
@@ -160,7 +160,7 @@ class Gateway:
         self.client_finished = 0
         self.consumer = QueueManagerConsumer()
         self.consumer.declare_exchange(exchange_name='results', exchange_type='direct')
-        self.queue = self.consumer.queue_declare(queue_name='')
+        self.queue = self.consumer.queue_declare(queue_name=f'results_{client_id}')
         self.consumer.queue_bind(exchange_name='results', queue_name=self.queue, routing_key='results')
 
     def generate_message_id(self, exchange):
@@ -250,8 +250,11 @@ class Gateway:
         def cb(ch, method, props, body):
             msg = body.decode()
             if msg.startswith(constants.END):
+                print(f"Mensaje: {msg}")
                 client = msg[len(constants.END):].strip()
+                print(f"client: {client}, addr: {addr}")
                 if client == str(addr):
+                    print("Enter condition")
                     self.client_finished += 1
                     log(f"[*] Client {addr} send finished {self.client_finished} times. Expected {EOF_WAITING}")
                     if self.client_finished == EOF_WAITING:
@@ -261,10 +264,6 @@ class Gateway:
                         self.consumer.stop_consuming()
                         self.consumer.close_connection()
                         return
-                
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                print(f"Acknowledged EOF for client {addr}")
-                return
 
             if msg.startswith('Query'):
                 msg = msg.split(constants.SEPARATOR)
@@ -273,9 +272,8 @@ class Gateway:
                     if addr not in self.results:
                         self.results[addr] = []
                     self.results[addr].append(msg[0])
-                print(f"Ack respuesta query para {addr}")
-                ch.basic_ack(delivery_tag=method.delivery_tag)
 
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
         self.consumer.consume_messages(self.queue, callback=cb)
         self.consumer.start_consuming()
@@ -294,7 +292,7 @@ class Gateway:
 def handle_client_wrapper(args):
     conn, addr = args
     client_id = uuid.uuid4()
-    gateway = Gateway()
+    gateway = Gateway(client_id)
     with conn:
         log(f"[+] Connection from {addr} with id {client_id}")        
         gateway.handle_client(conn, client_id)

@@ -4,7 +4,7 @@ import os
 from join import Join
 
 class JoinCredits(Join):
-    def callback_joined(self, _ch, method, _properties, body):
+    def callback_joined(self, ch, method, _properties, body):
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             print(f" [*] Received EOF for ratings bind {method.routing_key} from client {client}")
@@ -25,6 +25,8 @@ class JoinCredits(Join):
             message_id = body_split[4]
             if self.node_instance.is_repeated(message_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+
                 return 
             if client not in self.results:
                 self.results[client] = {}
@@ -41,6 +43,8 @@ class JoinCredits(Join):
                 if movie_id not in self.waiting[client]:
                     self.waiting[client][movie_id] = []
                 self.waiting[client][movie_id].append((actor_id, name))
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def send_pending(self, client):
         if client in self.finished:

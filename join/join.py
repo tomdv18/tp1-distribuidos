@@ -22,7 +22,7 @@ class Join:
         )
         self.node_instance.start_consuming()
 
-    def callback_metadata(self, _ch, method, _properties, body):
+    def callback_metadata(self, ch, method, _properties, body):
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             print(f" [*] Received EOF for metadata bind {method.routing_key} from client {client}")
@@ -42,11 +42,14 @@ class Join:
             message_id = body_split[3]
             if self.node_instance.is_repeated(message_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
             if client not in self.results:
                 self.results[client] = {}
             if movie_id not in self.results[client]:
                 self.results[client][movie_id] = (title, 0, 0)
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def callback_joined(self, _ch, method, _properties, body):
         raise NotImplementedError("Subclass responsibility")

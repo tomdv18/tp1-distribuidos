@@ -43,6 +43,7 @@ class AggregatorQ4(Generic):
             message_id = body_split[4]
             if self.node_instance.is_repeated(message_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
             if client not in self.ocurrences:
                 self.ocurrences[client] = {}
@@ -50,7 +51,9 @@ class AggregatorQ4(Generic):
                 self.ocurrences[client][id] = [count, name]
             else:
                 self.ocurrences[client][id][0] += count
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
+        
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
