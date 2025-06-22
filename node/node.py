@@ -15,7 +15,7 @@ class Node:
         self.consumer = self.declare_consumer()
         self.still_alive = StillAlive()
         self.still_alive.start()
-        self.last_message_id = 0
+        self.last_message_id = {} # Diccionario para cliente - ultimo message_id recibido
 
     def declare_consumer(self):
         queue_manager_input = QueueManagerConsumer()
@@ -70,6 +70,5 @@ class Node:
             message=message
         )
     def is_repeated(self, message):
-        #return  str(message) in self.messages_received
-        #por ahora return False      
+        # IMPLEMENTAR: Verifica si el message_id ya fue recibido
         return False

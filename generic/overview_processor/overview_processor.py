@@ -83,7 +83,6 @@ class OverviewProcessor(Generic):
                 if self.batch[client]:
                     self.process_message_batch(self.batch[client], self.pipeline)
                     for m, _ in self.batch[client]:
-                        print(f" [*] ACK for client {client}")
                         ch.basic_ack(delivery_tag=m.delivery_tag)
 
                 self.node_instance.send_end_message_to_all_binds(client)
@@ -124,7 +123,6 @@ class OverviewProcessor(Generic):
                     self.process_message_batch(self.batch[client], self.pipeline)
 
                     for m, _ in self.batch[client]:
-                        print(f" [*] ACK for client {client}")
                         ch.basic_ack(delivery_tag=m.delivery_tag)
                     self.batch[client] = []
                     self.last_time[client] = time.time()

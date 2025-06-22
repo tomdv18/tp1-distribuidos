@@ -250,17 +250,14 @@ class Gateway:
         def cb(ch, method, props, body):
             msg = body.decode()
             if msg.startswith(constants.END):
-                print(f"Mensaje: {msg}")
                 client = msg[len(constants.END):].strip()
                 print(f"client: {client}, addr: {addr}")
                 if client == str(addr):
-                    print("Enter condition")
                     self.client_finished += 1
                     log(f"[*] Client {addr} send finished {self.client_finished} times. Expected {EOF_WAITING}")
                     if self.client_finished == EOF_WAITING:
                         log(f"[*] Received EOF for client {addr}")
                         ch.basic_ack(delivery_tag=method.delivery_tag)
-                        print(f"[*] ack last eof for {addr}")
                         self.consumer.stop_consuming()
                         self.consumer.close_connection()
                         return
