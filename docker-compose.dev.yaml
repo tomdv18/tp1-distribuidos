@@ -20,7 +20,7 @@ services:
     restart: on-failure
     environment:
     - PYTHONUNBUFFERED=1
-    - EOF=2
+    - EOF=3
     depends_on:
       health_checker_1:
         condition: service_started
@@ -28,10 +28,10 @@ services:
         condition: service_started
       filter_spain_argentina_2:
         condition: service_started
-      #filter_one_prod_1:
-      #  condition: service_started
-      #filter_one_prod_2:
-      #  condition: service_started
+      filter_one_prod_1:
+        condition: service_started
+      filter_one_prod_2:
+        condition: service_started
       #filter_argentina_1:
       #  condition: service_started
       #filter_argentina_2:
@@ -52,10 +52,10 @@ services:
       #  condition: service_healthy
       #overview_2:
       #  condition: service_healthy
-      #top_budget_1:
-      #  condition: service_started
-      #top_budget_2:
-      #  condition: service_started
+      top_budget_1:
+        condition: service_started
+      top_budget_2:
+        condition: service_started
       #top_rating_1:
       #  condition: service_started
       #top_rating_2:
@@ -76,21 +76,23 @@ services:
   #    dockerfile: model_downloader.dockerfile
   #  volumes:
   #  - ./model_downloader/model_volume:/models
-  #aggregator_q2:
-  #  build:
-  #    context: .
-  #    dockerfile: generic/aggregator_q2/generic.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=0,1,2,3,4,5,6,7,8,9
-  #  - CONSUMER_EXCHANGE=top_budget
-  #  - PUBLISHER_EXCHANGE=results
-  #  - NODE_ID=aggregator_q2
-  #  - HEALTH_CHECK_ID=1
+  aggregator_q2:
+    build:
+      context: .
+      dockerfile: generic/aggregator_q2/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,5,6,7,8,9
+    - CONSUMER_EXCHANGE=top_budget
+    - PUBLISHER_EXCHANGE=results
+    - NODE_ID=aggregator_q2
+    - HEALTH_CHECK_ID=1
+    volumes:
+    - ./volumes/aggregator_q2:/app/files
   #aggregator_q3:
   #  build:
   #    context: .
@@ -255,44 +257,48 @@ services:
     - PUBLISHER_EXCHANGE=results
     volumes:
     - ./volumes/filter_years_2000_q1_2:/app/files
-  #filter_one_prod_1:
-  #  build:
-  #    context: .
-  #    dockerfile: filter/filter_one_prod/filter.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #    top_budget_1:
-  #      condition: service_started
-  #    top_budget_2:
-  #      condition: service_started
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=0,1,2,3,4
-  #  - NODE_ID=filter_one_prod_1
-  #  - HEALTH_CHECK_ID=1
-  #  - CONSUMER_EXCHANGE=gateway_metadata
-  #  - PUBLISHER_EXCHANGE=filter_one_prod
-  #filter_one_prod_2:
-  #  build:
-  #    context: .
-  #    dockerfile: filter/filter_one_prod/filter.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #    top_budget_1:
-  #      condition: service_started
-  #    top_budget_2:
-  #      condition: service_started
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=5,6,7,8,9
-  #  - NODE_ID=filter_one_prod_2
-  #  - HEALTH_CHECK_ID=1
-  #  - CONSUMER_EXCHANGE=gateway_metadata
-  #  - PUBLISHER_EXCHANGE=filter_one_prod
+  filter_one_prod_1:
+    build:
+      context: .
+      dockerfile: filter/filter_one_prod/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_budget_1:
+        condition: service_started
+      top_budget_2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4
+    - NODE_ID=filter_one_prod_1
+    - HEALTH_CHECK_ID=1
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_one_prod
+    volumes:
+    - ./volumes/filter_one_prod_1:/app/files
+  filter_one_prod_2:
+    build:
+      context: .
+      dockerfile: filter/filter_one_prod/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_budget_1:
+        condition: service_started
+      top_budget_2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9
+    - NODE_ID=filter_one_prod_2
+    - HEALTH_CHECK_ID=1
+    - CONSUMER_EXCHANGE=gateway_metadata
+    - PUBLISHER_EXCHANGE=filter_one_prod
+    volumes:
+    - ./volumes/filter_one_prod_2:/app/files
   #filter_argentina_1:
   #  build:
   #    context: .
@@ -527,42 +533,46 @@ services:
   #    timeout: 3s
   #    retries: 10
   #    start_period: 15s
-  #top_budget_1:
-  #  build:
-  #    context: .
-  #    dockerfile: generic/top_budget/generic.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #    aggregator_q2:
-  #      condition: service_started
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=0,1,2,3,4,-1
-  #  - NODE_ID=top_budget_1
-  #  - HEALTH_CHECK_ID=1
-  #  - EOF=2
-  #  - CONSUMER_EXCHANGE=filter_one_prod
-  #  - PUBLISHER_EXCHANGE=top_budget
-  #top_budget_2:
-  #  build:
-  #    context: .
-  #    dockerfile: generic/top_budget/generic.dockerfile
-  #  restart: on-failure
-  #  depends_on:
-  #    rabbitmq:
-  #      condition: service_healthy
-  #    aggregator_q2:
-  #      condition: service_started
-  #  environment:
-  #  - PYTHONUNBUFFERED=1
-  #  - BINDS=5,6,7,8,9,-1
-  #  - NODE_ID=top_budget_2
-  #  - HEALTH_CHECK_ID=1
-  #  - EOF=2
-  #  - CONSUMER_EXCHANGE=filter_one_prod
-  #  - PUBLISHER_EXCHANGE=top_budget
+  top_budget_1:
+    build:
+      context: .
+      dockerfile: generic/top_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=0,1,2,3,4,-1
+    - NODE_ID=top_budget_1
+    - HEALTH_CHECK_ID=1
+    - EOF=2
+    - CONSUMER_EXCHANGE=filter_one_prod
+    - PUBLISHER_EXCHANGE=top_budget
+    volumes:
+    - ./volumes/top_budget_1:/app/files
+  top_budget_2:
+    build:
+      context: .
+      dockerfile: generic/top_budget/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q2:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - BINDS=5,6,7,8,9,-1
+    - NODE_ID=top_budget_2
+    - HEALTH_CHECK_ID=1
+    - EOF=2
+    - CONSUMER_EXCHANGE=filter_one_prod
+    - PUBLISHER_EXCHANGE=top_budget
+    volumes:
+    - ./volumes/top_budget_2:/app/files
   #top_rating_1:
   #  build:
   #    context: .

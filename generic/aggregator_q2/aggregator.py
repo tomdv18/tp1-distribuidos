@@ -2,11 +2,12 @@ import constants
 import node
 import os
 from generic import Generic
+import json
 
 class AggregatorQ2(Generic):
     def __init__(self):
         self.budgets = {}
-        super().__init__()
+        super().__init__(self.leer_budgets)
 
     def callback(self, ch, method, _properties, body):
         if body.decode().startswith(constants.END):
@@ -33,6 +34,23 @@ class AggregatorQ2(Generic):
                 self.budgets.pop(client, None)
                 self.clients_ended.pop(client, None)
 
+
+
+            if client not in self.node_instance.last_message_id:
+                self.node_instance.last_message_id[client] = f'{constants.END}-{method.routing_key}'
+            self.node_instance.last_message_id[client] = f'{constants.END}-{method.routing_key}'
+
+            with open(f'{constants.PATH}clients_ended.json', 'w') as archivo:
+                json.dump( self.clients_ended, archivo)
+
+            with open(f'{constants.PATH}message_id.json', 'w') as archivo:
+                json.dump(self.node_instance.last_message_id, archivo)
+            
+            with open(f'{constants.PATH}budgets.json', 'w') as archivo:
+                json.dump(self.budgets, archivo)
+            with open(f'{constants.PATH}messages_sended.txt', 'w') as archivo:
+                archivo.write(str(self.messages_sended))
+
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             country_name = body_split[0]
@@ -48,12 +66,45 @@ class AggregatorQ2(Generic):
                 self.budgets[client][country_name] = budget
             else:
                 self.budgets[client][country_name] += budget
+
+            if client not in self.node_instance.last_message_id:
+                self.node_instance.last_message_id[client] = message_id
+            self.node_instance.last_message_id[client] = message_id
+
+
+
+            with open(f'{constants.PATH}message_id.json', 'w') as archivo:
+                json.dump(self.node_instance.last_message_id, archivo)
+            
+            with open(f'{constants.PATH}budgets.json', 'w') as archivo:
+                json.dump(self.budgets, archivo)
+
+            with open(f'{constants.PATH}messages_sended.txt', 'w') as archivo:
+                archivo.write(str(self.messages_sended))
+
+
+
+
+
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
         print(" [*] Aggregator Q2 shutdown.")
+
+    def leer_budgets(self):
+        budgets_path = os.path.join(constants.PATH, "budgets.json")
+        if os.path.isfile(budgets_path):
+            try:
+                with open(budgets_path, 'r') as f:
+                    self.budgets = json.load(f)
+                print(f"Cargado budgets desde {budgets_path}")
+            except Exception as e:
+                print(f"Error cargando budgets: {e}")
+                self.budgets = {}
+        else:
+            print("No se encontró budgets.json, iniciando vacío.")
             
 
 if __name__ == '__main__':
