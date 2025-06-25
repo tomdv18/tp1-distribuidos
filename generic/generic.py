@@ -21,9 +21,8 @@ class Generic:
     def callback(self, ch, method, _properties, body):
         raise NotImplementedError("Subclass responsibility")
     
-    def generate_message_id(self,prefix):
-        #RETORNA UN STRING UNICO PARA CADA MENSAJE CON EL SIGUIENTE FORMATO PP-XXXXXXX
-        id = f"{prefix}-{self.messages_sended:07d}"
+    def generate_message_id(self):
+        id = self.messages_sended
         self.messages_sended += 1
         return id
     

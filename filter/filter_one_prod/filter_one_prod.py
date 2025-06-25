@@ -13,10 +13,8 @@ class FilterOneProd(Filter):
             budget = body_split[2]
             client = body_split[8]
             message_id = body_split[9]
-            if self.node_instance.is_repeated(message_id):
-                print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
-                return None, None
-            row_str = f"{country_name}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+
+            row_str = f"{country_name}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
             key_from_country = self.number_from_country(country_name)
             return str(key_from_country), row_str
         return None, None

@@ -62,7 +62,7 @@ class OverviewProcessor(Generic):
             sentiment_label = result['label']
             sentiment_score = str(result['score'])
 
-            row_str = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{sentiment_label}{constants.SEPARATOR}{sentiment_score}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+            row_str = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{sentiment_label}{constants.SEPARATOR}{sentiment_score}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
             self.node_instance.send_message(
                 routing_key=str(movie_id[-1]),
                 message=row_str
@@ -105,13 +105,8 @@ class OverviewProcessor(Generic):
                 title = body_split[7]
                 client = body_split[8]
                 message_id = body_split[9]
-                if self.node_instance.is_repeated(message_id):
-                    print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
-                    ch.basic_ack(delivery_tag=method.delivery_tag)
-                    return 
 
-
-                body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+                body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
                 if client not in self.batch:
                     self.batch[client] = []
                 if client not in self.last_time:

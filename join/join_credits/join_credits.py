@@ -23,26 +23,20 @@ class JoinCredits(Join):
             name = body_split[2]
             client = body_split[3]
             message_id = body_split[4]
-            if self.node_instance.is_repeated(message_id):
+            node_id = body_split[5]
+            if self.node_instance.is_repeated(message_id, client, node_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
 
                 return 
             if client not in self.results:
                 self.results[client] = {}
-            if movie_id in self.results[client]:
-                message_id = self.generate_message_id(constants.JOIN_CREDITS)
-                row_str = f"{actor_id}{constants.SEPARATOR}{name}{constants.SEPARATOR}{movie_id}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
-                self.node_instance.send_message(
-                    routing_key=actor_id[-1],
-                    message=row_str
-                )
-            else:
-                if client not in self.waiting:
-                    self.waiting[client] = {}
-                if movie_id not in self.waiting[client]:
-                    self.waiting[client][movie_id] = []
-                self.waiting[client][movie_id].append((actor_id, name))
+
+            if client not in self.waiting:
+                self.waiting[client] = {}
+            if movie_id not in self.waiting[client]:
+                self.waiting[client][movie_id] = []
+            self.waiting[client][movie_id].append((actor_id, name))
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -55,14 +49,16 @@ class JoinCredits(Join):
             self.finished.append(client)
             self.remove_client(client)
             return
+        message_id = 0
         for movie_id, actors in self.waiting[client].items():
             if movie_id in self.results[client]:
                 for actor_id, name in actors:
-                    row_str = f"{actor_id}{constants.SEPARATOR}{name}{constants.SEPARATOR}{movie_id}{constants.SEPARATOR}{client}"
+                    row_str = f"{actor_id}{constants.SEPARATOR}{name}{constants.SEPARATOR}{movie_id}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
                     self.node_instance.send_message(
                         routing_key=actor_id[-1],
                         message=row_str
                     )
+                    message_id += 1
         self.node_instance.send_end_message_to_all_binds(client)
         self.finished.append(client)
         self.remove_client(client)

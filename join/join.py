@@ -9,7 +9,6 @@ class Join:
         self.results = {}
         self.waiting = {}
         self.finished = []
-        self.message_count = 0
 
         self.node_instance = node.Node(
             publisher_exchange = os.getenv("PUBLISHER_EXCHANGE", ""),
@@ -40,14 +39,15 @@ class Join:
             title = body_split[1]
             client = body_split[2]
             message_id = body_split[3]
-            if self.node_instance.is_repeated(message_id):
+            node_id = body_split[4]
+            if self.node_instance.is_repeated(message_id, client, node_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
             if client not in self.results:
                 self.results[client] = {}
             if movie_id not in self.results[client]:
-                self.results[client][movie_id] = (title, 0, 0)
+                self.results[client][movie_id] = (title, 0, 0, message_id)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -67,11 +67,6 @@ class Join:
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
         print(" [*] Join shutdown.")
-    
-    def generate_message_id(self, prefix):
-        id = f"{prefix}-{self.message_count:07d}"
-        self.message_count += 1 
-        return id
 
         
 if __name__ == '__main__':

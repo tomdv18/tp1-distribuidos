@@ -26,10 +26,10 @@ class AggregatorQ4(Generic):
                     key=lambda x: (-x[1][0], x[1][1])
                 )[:10]
                 for id, (count, name) in top_ten:
-                    message_id = self.generate_message_id(constants.AGGREGATOR_Q4)
+                    message_id = self.generate_message_id()
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 4 -> {id} {count} {name}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+                        message=f"Query 4 -> {id} {count} {name}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
                     )
                 self.node_instance.send_end_message('results', client)
                 self.ocurrences.pop(client, None)
@@ -41,7 +41,8 @@ class AggregatorQ4(Generic):
             name = body_split[2]
             client = body_split[3]
             message_id = body_split[4]
-            if self.node_instance.is_repeated(message_id):
+            node_id = body_split[5]
+            if self.node_instance.is_repeated(message_id, client, node_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
@@ -51,6 +52,11 @@ class AggregatorQ4(Generic):
                 self.ocurrences[client][id] = [count, name]
             else:
                 self.ocurrences[client][id][0] += count
+
+            if node_id not in self.node_instance.last_message_id:
+                self.node_instance.last_message_id[node_id] = {}
+            self.node_instance.last_message_id[node_id][client] = body_split[-2]
+            
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         

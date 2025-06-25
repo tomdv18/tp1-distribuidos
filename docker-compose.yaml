@@ -95,6 +95,8 @@ services:
     - PUBLISHER_EXCHANGE=results
     - NODE_ID=aggregator_q2
     - HEALTH_CHECK_ID=1
+    volumes:
+    - ./volumes/aggregator_q2:/app/files
   aggregator_q3:
     build:
       context: .
@@ -585,6 +587,8 @@ services:
     - EOF=2
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=top_budget
+    volumes:
+    - ./volumes/top_budget_1:/app/files
   top_budget_2:
     build:
       context: .
@@ -603,6 +607,8 @@ services:
     - EOF=2
     - CONSUMER_EXCHANGE=filter_one_prod
     - PUBLISHER_EXCHANGE=top_budget
+    volumes:
+    - ./volumes/top_budget_2:/app/files
   top_rating_1:
     build:
       context: .
