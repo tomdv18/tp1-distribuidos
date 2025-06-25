@@ -70,12 +70,12 @@ class CSVProcessor:
             if not all([movie_id, genres, budget, overview, countries, date, revenue, title]):
                 return None, None
             
-            msg = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{countries}{constants.SEPARATOR}{date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}"
+            msg = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{countries}{constants.SEPARATOR}{date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}{constants.SEPARATOR}1"
 
         elif self.exchange == 'gateway_ratings':
             if len(row) < 3 or not row[1] or not row[2]:
                 return None, None
-            msg = f"{row[1]}{constants.SEPARATOR}{row[2]}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}"
+            msg = f"{row[1]}{constants.SEPARATOR}{row[2]}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}{constants.SEPARATOR}1"
 
 
             movie_id = row[1]
@@ -128,7 +128,7 @@ class CreditsProcessor(CSVProcessor):
                 cast_list = ast.literal_eval(row['cast'])
                 movie_id = row['id']
                 for actor in cast_list:
-                    msg = f"{movie_id}{constants.SEPARATOR}{actor['id']}{constants.SEPARATOR}{actor['name']}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}"
+                    msg = f"{movie_id}{constants.SEPARATOR}{actor['id']}{constants.SEPARATOR}{actor['name']}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}{constants.SEPARATOR}1"
         
 
                     key = movie_id[-1]
@@ -172,7 +172,7 @@ class Gateway:
 
         counter = self.message_counters[exchange]
         self.message_counters[exchange] += 1
-        return f"{prefix}{counter:09d}"
+        return counter
 
 
     def handle_client(self, conn, addr):

@@ -27,11 +27,11 @@ class AverageBudget(Generic):
                 for sentiment_label in self.results.get(client, {}):
                     count = self.cant[client].get(sentiment_label, 0)
                     if count != 0:
-                        message_id = self.generate_message_id(constants.AVERAGE_BUDGET)
+                        message_id = self.generate_message_id()
                         average = self.results[client][sentiment_label] / count
                         self.node_instance.send_message(
                             routing_key=method.routing_key,
-                            message=f"{sentiment_label}{constants.SEPARATOR}{average}{constants.SEPARATOR}{count}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+                            message=f"{sentiment_label}{constants.SEPARATOR}{average}{constants.SEPARATOR}{count}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
                         )
                 self.node_instance.send_end_message_to_all_binds(client)
                 self.results.pop(client, None)
@@ -45,7 +45,8 @@ class AverageBudget(Generic):
             sentiment_label = body_split[3]
             client = body_split[6]
             message_id = body_split[7]
-            if self.node_instance.is_repeated(message_id):
+            node_id = body_split[8]
+            if self.node_instance.is_repeated(message_id, client, node_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 return
 
@@ -67,6 +68,10 @@ class AverageBudget(Generic):
                 if sentiment_label not in self.cant[client]:
                     self.cant[client][sentiment_label] = 0
                 self.cant[client][sentiment_label] += 1
+
+            if node_id not in self.node_instance.last_message_id:
+                self.node_instance.last_message_id[node_id] = {}
+            self.node_instance.last_message_id[node_id][client] = body_split[-2]
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

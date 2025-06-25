@@ -22,7 +22,8 @@ class JoinRatings(Join):
             rating = body_split[1]
             client = body_split[2]
             message_id = body_split[3]
-            if self.node_instance.is_repeated(message_id):
+            node_id = body_split[4]
+            if self.node_instance.is_repeated(message_id, client, node_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
@@ -30,8 +31,8 @@ class JoinRatings(Join):
             if client not in self.results:
                 self.results[client] = {}
             if movie_id in self.results[client]:
-                title, count, total = self.results[client][movie_id]
-                self.results[client][movie_id] = (title, count + 1, total + float(rating))
+                title, count, total, message_id = self.results[client][movie_id]
+                self.results[client][movie_id] = (title, count + 1, total + float(rating), message_id)
             else:
                 if client not in self.waiting:
                     self.waiting[client] = {}
@@ -47,16 +48,15 @@ class JoinRatings(Join):
             return
         for movie_id, ratings in self.waiting[client].items():
             if movie_id in self.results[client]:
-                title, count, total = self.results[client][movie_id]
+                title, count, total, message_id = self.results[client][movie_id]
                 for rating in ratings:
                     total += float(rating)
                     count += 1
-                self.results[client][movie_id] = (title, count, total)
-        for movie_id, (title, count, total) in self.results[client].items():
+                self.results[client][movie_id] = (title, count, total, message_id)
+        for movie_id, (title, count, total, message_id) in self.results[client].items():
             if count > 0:
                 avg_rating = total / count
-                message_id = self.generate_message_id(constants.JOIN_RATINGS)
-                row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{avg_rating}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+                row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{avg_rating}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
                 self.node_instance.send_message(
                     routing_key=movie_id[-1],
                     message=row_str

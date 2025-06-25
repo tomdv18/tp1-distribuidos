@@ -12,10 +12,8 @@ class Filter2000s(Filter):
             title = body_split[1]
             client = body_split[4]
             message_id = body_split[5]
-            if self.node_instance.is_repeated(message_id):
-                print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
-                return 
-            row_str = f"Query 1 -> ID: {movie_id} - Title: {title} - Genres: {genres}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+
+            row_str = f"Query 1 -> ID: {movie_id} - Title: {title} - Genres: {genres}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
             return os.getenv("PUBLISHER_EXCHANGE", ""), row_str
         return None, None
     

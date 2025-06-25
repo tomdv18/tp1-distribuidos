@@ -17,15 +17,15 @@ class AggregatorQ3(Generic):
             if self.clients_ended[client] == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
                 if client in self.top_rating and client in self.worst_rating:
-                    message_id = self.generate_message_id(constants.AGGREGATOR_Q3)
+                    message_id = self.generate_message_id()
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 3 -> {self.top_rating[client][0]} {self.top_rating[client][1]} {self.top_rating[client][2]}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+                        message=f"Query 3 -> {self.top_rating[client][0]} {self.top_rating[client][1]} {self.top_rating[client][2]}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
                     )
-                    message_id = self.generate_message_id(constants.AGGREGATOR_Q3)
+                    message_id = self.generate_message_id()
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 3 -> {self.worst_rating[client][0]} {self.worst_rating[client][1]} {self.worst_rating[client][2]}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+                        message=f"Query 3 -> {self.worst_rating[client][0]} {self.worst_rating[client][1]} {self.worst_rating[client][2]}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
                     )
                 self.node_instance.send_end_message('results', client)
                 self.top_rating.pop(client, None)
@@ -38,8 +38,8 @@ class AggregatorQ3(Generic):
             rating = float(body_split[2])
             client = body_split[3]
             message_id = body_split[4] 
-
-            if self.node_instance.is_repeated(message_id):
+            node_id = body_split[5]
+            if self.node_instance.is_repeated(message_id, client, node_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
@@ -48,6 +48,10 @@ class AggregatorQ3(Generic):
                 self.top_rating[client] = (movie_id, title, rating)
             if client not in self.worst_rating or rating < self.worst_rating[client][2]:
                self.worst_rating[client] = (movie_id, title, rating)
+
+            if node_id not in self.node_instance.last_message_id:
+                self.node_instance.last_message_id[node_id] = {}
+            self.node_instance.last_message_id[node_id][client] = body_split[-2]
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

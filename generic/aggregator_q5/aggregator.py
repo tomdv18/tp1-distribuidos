@@ -27,12 +27,12 @@ class AggregatorQ5(Generic):
                 for sentiment_label in self.results.get(client, {}):
                     count = self.cant[client].get(sentiment_label, 0)
                     if count != 0:
-                        message_id = self.generate_message_id(constants.AGGREGATOR_Q5)
+                        message_id = self.generate_message_id()
                         print(f" [*] Sending result for client {client} -> {sentiment_label} {self.results[client][sentiment_label]} / {count}")
                         average = self.results[client][sentiment_label] / count
                         self.node_instance.send_message(
                             routing_key='results',
-                            message=f"Query 5 -> {sentiment_label} {average}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+                            message=f"Query 5 -> {sentiment_label} {average}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
                         )
                 self.node_instance.send_end_message('results', client)
                 self.results.pop(client, None)
@@ -46,8 +46,9 @@ class AggregatorQ5(Generic):
             count = int(body_split[2])
             client = body_split[3]
             message_id = body_split[4]
+            node_id = body_split[5]
 
-            if self.node_instance.is_repeated(message_id):
+            if self.node_instance.is_repeated(message_id, client, node_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
@@ -65,6 +66,10 @@ class AggregatorQ5(Generic):
             if sentiment_label not in self.cant[client]:
                 self.cant[client][sentiment_label] = 0
             self.cant[client][sentiment_label] += count
+
+            if node_id not in self.node_instance.last_message_id:
+                self.node_instance.last_message_id[node_id] = {}
+            self.node_instance.last_message_id[node_id][client] = body_split[-2]
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

@@ -85,10 +85,6 @@ class Filter:
                     routing_key=routing_key,
                     message=row_str
                 )
-            client = body_split[-2]  
-            if client not in self.node_instance.last_message_id:
-                self.node_instance.last_message_id[client] = body_split[-1]
-            self.node_instance.last_message_id[client] = body_split[-1]
 
             with open(f'{constants.PATH}message_id.json', 'w') as archivo:
                     json.dump(self.node_instance.last_message_id, archivo)

@@ -26,10 +26,10 @@ class TopBudget(Generic):
                         key=lambda x: (-x[1], x[0])
                     )[:5]
                     for country, budget in top_five:
-                        message_id = self.generate_message_id(constants.TOP_BUDGET)
+                        message_id = self.generate_message_id()
                         self.node_instance.send_message(
                             routing_key="1",
-                            message=f"{country}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}"
+                            message=f"{country}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
                         )
                         print(f" [*] Sending top 5 client {client}: {country} - {budget}")
                 self.node_instance.send_end_message_to_all_binds(client)
@@ -61,7 +61,8 @@ class TopBudget(Generic):
             budget = int(body_split[1]) 
             client = body_split[2]
             message_id = body_split[3]
-            if self.node_instance.is_repeated(message_id):
+            node_id = body_split[4]
+            if self.node_instance.is_repeated(message_id, client, node_id):
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
@@ -72,9 +73,9 @@ class TopBudget(Generic):
             else:
                 self.budgets[client][country_name] += budget
 
-            if client not in self.node_instance.last_message_id:
-                self.node_instance.last_message_id[client] = body_split[-1]
-            self.node_instance.last_message_id[client] = body_split[-1]
+            if node_id not in self.node_instance.last_message_id:
+                self.node_instance.last_message_id[node_id] = {}
+            self.node_instance.last_message_id[node_id][client] = body_split[-2]
 
             with open(f'{constants.PATH}message_id.json', 'w') as archivo:
                 json.dump(self.node_instance.last_message_id, archivo)
