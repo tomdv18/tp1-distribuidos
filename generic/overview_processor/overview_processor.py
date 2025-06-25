@@ -128,6 +128,10 @@ class OverviewProcessor(Generic):
                     self.last_time[client] = time.time()
             else:
                 ch.basic_ack(delivery_tag=method.delivery_tag)
+    
+    def load_custom_state(self, data):
+        # no persiste estado
+        pass
         
 
 if __name__ == '__main__':

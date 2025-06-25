@@ -2,15 +2,18 @@ import constants
 import node
 import os
 from generic import Generic
+import json
 
 class AverageBudget(Generic):
     def __init__(self):
         self.results = {}
+        self.last_message_id = {}
         self.cant = {}
+        self.batch = {}
         super().__init__()
 
     def callback(self, ch, method, _properties, body):
-
+        #TODO: Agregar chequeo de duplicados (si es duplicado mando ACK y listo)
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             if client not in self.clients_ended:
@@ -22,7 +25,8 @@ class AverageBudget(Generic):
 
             if self.clients_ended[client] == self.node_instance.total_binds():
                 print(f"Client: {client} finished all binds.")
-
+                # Tengo todos los EOFs
+                self.check_batch(client, last_eof=True)
                 
                 for sentiment_label in self.results.get(client, {}):
                     count = self.cant[client].get(sentiment_label, 0)
@@ -37,6 +41,10 @@ class AverageBudget(Generic):
                 self.results.pop(client, None)
                 self.cant.pop(client, None)
                 self.clients_ended.pop(client, None)
+
+            self.persist_eof()
+            self.persist_state()
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)
@@ -67,9 +75,49 @@ class AverageBudget(Generic):
                 if sentiment_label not in self.cant[client]:
                     self.cant[client][sentiment_label] = 0
                 self.cant[client][sentiment_label] += 1
-        
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+            
+            if client not in self.batch:
+                self.batch[client] = []
+            
+            self.batch[client].append((ch, method))
 
-                
+            if client not in self.last_message_id:
+                self.last_message_id[client] = f'{constants.AVERAGE_BUDGET}-{method.routing_key}' #TODO: logica de id de mensaje
+            
+            self.check_batch(client)
+    
+    def persist_state(self):
+        try:
+            with open(f'{constants.PATH}state.json', 'r') as archivo:
+                lines = archivo.readlines()
+        except FileNotFoundError:
+            lines = []
+        
+        nueva_linea = json.dumps({
+            "results": self.results,
+            "cant": self.cant,
+            "last_message_id": self.last_message_id
+        }) + "\n"
+        lines.append(nueva_linea)
+        
+        # Mantener solo las últimas 5 líneas
+        lines = lines[-5:]
+        
+        # Escribir a archivo temporal primero
+        temp_file = f'{constants.PATH}state.json.tmp'
+        with open(temp_file, 'w') as archivo:
+            archivo.writelines(lines)
+        
+        # Mover atomicamente usando os.rename
+        os.rename(temp_file, f'{constants.PATH}state.json')
+    
+    def load_custom_state(self, data):
+        if "results" in data:
+            self.results = data["results"]
+        if "cant" in data:
+            self.cant = data["cant"]
+        if "last_message_id" in data:
+            self.last_message_id = data["last_message_id"]
+
 if __name__ == '__main__':
     AverageBudget()
