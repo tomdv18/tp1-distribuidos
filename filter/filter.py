@@ -47,6 +47,36 @@ class Filter:
             print("No se encontró message_id.json, iniciando vacío.")
 
     def callback(self, ch, method, _properties, body):
+
+        if body.decode().startswith(constants.CLIENT_TIMEOUT):
+            client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
+            #SI llega un timeout, y esta el cliente, se lo borra, si no no se hace nada
+            print(f" [*] Received timeout for client {client}")
+            if client in self.clients_ended:
+                self.clients_ended.pop(client, None)
+                print(f" [*] Client {client} removed from clients_ended.")
+            else:
+                #print(f" [*] Client {client} not found in clients_ended, nothing to remove.")
+                pass
+
+            if client in self.node_instance.last_message_id:
+                self.node_instance.last_message_id.pop(client, None)
+                print(f" [*] Client {client} removed from last_message_id.")
+            else:
+                #print(f" [*] Client {client} not found in last_message_id, nothing to remove.")
+                pass
+
+
+
+            self.timeout_bind(method.routing_key, client)
+
+            with open(f'{constants.PATH}clients_ended.json', 'w') as archivo:
+                json.dump(self.clients_ended, archivo)
+            
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
+
+
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             print(body.decode())
@@ -98,7 +128,8 @@ class Filter:
         ch.basic_ack(delivery_tag=method.delivery_tag)
         
 
-            
+    def timeout_bind(self, bind, client):
+        self.node_instance.send_timeout_message(bind, client)          
 
     def end_when_bind_ends(self, bind, client):
         self.node_instance.send_end_message(bind, client)

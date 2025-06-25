@@ -10,6 +10,38 @@ class AggregatorQ2(Generic):
         super().__init__(self.leer_budgets)
 
     def callback(self, ch, method, _properties, body):
+
+        if body.decode().startswith(constants.CLIENT_TIMEOUT):
+            client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
+            #SI llega un timeout, y esta el cliente, se lo borra, si no no se hace nada
+            print(f" [*] Received timeout for client {client}")
+            if client in self.clients_ended:
+                self.clients_ended.pop(client, None)
+                print(f" [*] Client {client} removed from clients_ended.")
+            else:
+                #print(f" [*] Client {client} not found in clients_ended, nothing to remove.")
+                pass
+
+            if client in self.budgets:
+                self.budgets.pop(client, None)
+                print(f" [*] Client {client} removed from budgets.")
+            else:
+                #print(f" [*] Client {client} not found in budgets, nothing to remove.")
+                pass
+
+
+            self.timeout_bind(method.routing_key, client)
+
+            with open(f'{constants.PATH}clients_ended.json', 'w') as archivo:
+                json.dump(self.clients_ended, archivo)
+
+            with open(f'{constants.PATH}budgets.json', 'w') as archivo:
+                json.dump(self.budgets, archivo)
+            
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
+        
+
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
