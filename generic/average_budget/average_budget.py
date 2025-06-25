@@ -7,7 +7,6 @@ import json
 class AverageBudget(Generic):
     def __init__(self):
         self.results = {}
-        #self.last_message_id = {} #TODO: Refacor al node
         self.cant = {}
         self.batch = {}
         super().__init__()
