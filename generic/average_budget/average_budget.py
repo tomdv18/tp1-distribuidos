@@ -7,13 +7,12 @@ import json
 class AverageBudget(Generic):
     def __init__(self):
         self.results = {}
-        self.last_message_id = {} #Refacor al node
+        #self.last_message_id = {} #TODO: Refacor al node
         self.cant = {}
         self.batch = {}
         super().__init__()
 
     def callback(self, ch, method, _properties, body):
-        #TODO: Agregar chequeo de duplicados (si es duplicado mando ACK y listo)
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             if client not in self.clients_ended:
@@ -55,6 +54,7 @@ class AverageBudget(Generic):
             message_id = body_split[7]
             node_id = body_split[8]
             if self.node_instance.is_repeated(message_id, client, node_id):
+                ch.basic_ack(delivery_tag=method.delivery_tag)
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 return
 
@@ -100,7 +100,7 @@ class AverageBudget(Generic):
         nueva_linea = json.dumps({
             "results": self.results,
             "cant": self.cant,
-            "last_message_id": self.last_message_id
+            "last_message_id": self.node_instance.last_message_id
         }) + "\n"
         lines.append(nueva_linea)
         
@@ -121,7 +121,7 @@ class AverageBudget(Generic):
         if "cant" in data:
             self.cant = data["cant"]
         if "last_message_id" in data:
-            self.last_message_id = data["last_message_id"]
+            self.node_instance.last_message_id = data["last_message_id"]
 
 if __name__ == '__main__':
     AverageBudget()

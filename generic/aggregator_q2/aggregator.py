@@ -59,6 +59,7 @@ class AggregatorQ2(Generic):
             message_id = body_split[3]
             node_id = body_split[4]
             if self.node_instance.is_repeated(message_id, client, node_id):
+                ch.basic_ack(delivery_tag=method.delivery_tag)
                 print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
                 return 
             if client not in self.budgets:
