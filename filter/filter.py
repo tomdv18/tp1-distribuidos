@@ -52,12 +52,20 @@ class Filter:
             print(body.decode())
             print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
 
+            
             if client not in self.clients_ended:
-                self.clients_ended[client] = 0
-            self.clients_ended[client] += 1
+                self.clients_ended[client] = []
+
+            if method.routing_key in self.clients_ended[client]:
+                print(f" [!] Duplicate EOF from routing key {method.routing_key} for client {client} — ignored.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
+
+            self.clients_ended[client].append(method.routing_key)
+
 
             self.end_when_bind_ends(method.routing_key, client)
-            if self.clients_ended[client] == self.node_instance.total_binds():
+            if len(self.clients_ended[client]) == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
                 self.end_when_all_binds_end(client)
                 self.clients_ended.pop(client, None)

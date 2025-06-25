@@ -26,12 +26,20 @@ class Join:
             client = body.decode()[len(constants.END):].strip()
             print(f" [*] Received EOF for metadata bind {method.routing_key} from client {client}")
             if client not in self.clients_ended_metadata:
-                self.clients_ended_metadata[client] = 0
-            self.clients_ended_metadata[client] += 1
-            if self.clients_ended_metadata[client] == self.node_instance.total_binds():
+                self.clients_ended_metadata[client] = []
+
+            if method.routing_key in self.clients_ended_metadata[client]:
+                print(f" [!] Duplicate EOF from routing key {method.routing_key} for client {client} — ignored.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
+
+            self.clients_ended_metadata[client].append(method.routing_key)
+
+            if len(self.clients_ended_metadata[client]) == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all metadata binds.")
-                if client in self.clients_ended_joined and self.clients_ended_joined[client] == self.node_instance.total_binds():
+                if client in self.clients_ended_joined and len(self.clients_ended_joined[client]) == self.node_instance.total_binds():
                     self.send_pending(client)
+
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)

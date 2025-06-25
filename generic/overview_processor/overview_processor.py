@@ -72,13 +72,18 @@ class OverviewProcessor(Generic):
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
 
+            
             if client not in self.clients_ended:
-                self.clients_ended[client] = 0
-            self.clients_ended[client] += 1
-            print(f"Received END message from {client}, count: {self.clients_ended[client]}")
+                self.clients_ended[client] = []
 
+            if method.routing_key in self.clients_ended[client]:
+                print(f" [!] Duplicate EOF from routing key {method.routing_key} for client {client} — ignored.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
 
-            if self.clients_ended[client] == self.node_instance.total_binds():
+            self.clients_ended[client].append(method.routing_key)
+
+            if len(self.clients_ended[client]) == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
                 if self.batch[client]:
                     self.process_message_batch(self.batch[client], self.pipeline)
@@ -89,7 +94,7 @@ class OverviewProcessor(Generic):
                 self.batch.pop(client, None)
                 self.last_time.pop(client, None)
                 self.clients_ended.pop(client, None)
-            
+            self.persist_eof()
             ch.basic_ack(delivery_tag=method.delivery_tag)                
 
                 
@@ -125,6 +130,9 @@ class OverviewProcessor(Generic):
                 ch.basic_ack(delivery_tag=method.delivery_tag)
     
     def load_custom_state(self, data):
+        # no persiste estado
+        pass
+    def persist_state(self):
         # no persiste estado
         pass
         

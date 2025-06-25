@@ -11,10 +11,18 @@ class AggregatorQ3(Generic):
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
+            
             if client not in self.clients_ended:
-                self.clients_ended[client] = 0
-            self.clients_ended[client] += 1
-            if self.clients_ended[client] == self.node_instance.total_binds():
+                self.clients_ended[client] = []
+
+            if method.routing_key in self.clients_ended[client]:
+                print(f" [!] Duplicate EOF from routing key {method.routing_key} for client {client} — ignored.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
+
+            self.clients_ended[client].append(method.routing_key)
+
+            if len(self.clients_ended[client]) == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
                 if client in self.top_rating and client in self.worst_rating:
                     message_id = self.generate_message_id()
