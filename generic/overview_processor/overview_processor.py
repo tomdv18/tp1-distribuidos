@@ -36,7 +36,7 @@ class OverviewProcessor(Generic):
         for idx, (method, body) in enumerate(batch):
             try:
                 body_split = body.split(constants.SEPARATOR)
-                movie_id, budget, revenue, overview, title, client, message_id = body_split
+                movie_id, budget, revenue, overview, title, client, message_id, _node_id = body_split
 
                 tokenized_text = pipeline.tokenizer(overview, padding=False, truncation=False, return_tensors="pt")
                 if len(tokenized_text['input_ids'][0]) <= pipeline.tokenizer.model_max_length:
