@@ -90,7 +90,7 @@ class Filter:
             self.end_when_bind_ends(method.routing_key, client)
             if len(self.clients_ended[client]) == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
-                #self.end_when_all_binds_end(client)
+                self.end_when_all_binds_end(client)
                 self.clients_ended.pop(client, None)
             
 
