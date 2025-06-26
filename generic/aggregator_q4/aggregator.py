@@ -37,7 +37,7 @@ class AggregatorQ4(Generic):
                     message_id = self.generate_message_id()
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 4 -> {id} {count} {name}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
+                        message=f"Query 4 -> {id} {count} {name}{constants.SEPARATOR}{client}"
                     )
                 self.node_instance.send_end_message('results', client)
                 self.ocurrences.pop(client, None)

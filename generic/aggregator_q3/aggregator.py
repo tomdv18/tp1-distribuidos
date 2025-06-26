@@ -28,12 +28,12 @@ class AggregatorQ3(Generic):
                     message_id = self.generate_message_id()
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 3 -> {self.top_rating[client][0]} {self.top_rating[client][1]} {self.top_rating[client][2]}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
+                        message=f"Query 3 -> {self.top_rating[client][0]} {self.top_rating[client][1]} {self.top_rating[client][2]}{constants.SEPARATOR}{client}"
                     )
                     message_id = self.generate_message_id()
                     self.node_instance.send_message(
                         routing_key='results',
-                        message=f"Query 3 -> {self.worst_rating[client][0]} {self.worst_rating[client][1]} {self.worst_rating[client][2]}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
+                        message=f"Query 3 -> {self.worst_rating[client][0]} {self.worst_rating[client][1]} {self.worst_rating[client][2]}{constants.SEPARATOR}{client}"
                     )
                 self.node_instance.send_end_message('results', client)
                 self.top_rating.pop(client, None)

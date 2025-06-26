@@ -39,7 +39,7 @@ class AggregatorQ5(Generic):
                         average = self.results[client][sentiment_label] / count
                         self.node_instance.send_message(
                             routing_key='results',
-                            message=f"Query 5 -> {sentiment_label} {average}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
+                            message=f"Query 5 -> {sentiment_label} {average}{constants.SEPARATOR}{client}"
                         )
                 self.node_instance.send_end_message('results', client)
                 self.results.pop(client, None)
