@@ -47,11 +47,6 @@ class Join:
             title = body_split[1]
             client = body_split[2]
             message_id = body_split[3]
-            node_id = body_split[4]
-            if self.node_instance.is_repeated(message_id, client, node_id):
-                print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                return 
             if client not in self.results:
                 self.results[client] = {}
             if movie_id not in self.results[client]:
