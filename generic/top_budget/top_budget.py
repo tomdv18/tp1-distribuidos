@@ -45,6 +45,8 @@ class TopBudget(Generic):
                 self.node_instance.send_end_message_to_all_binds(client)
                 self.budgets.pop(client, None)
                 self.clients_ended.pop(client, None)
+                for node_id in self.node_instance.last_message_id:
+                    self.node_instance.last_message_id[node_id].pop(client, None)
 
 
             self.persist_eof()

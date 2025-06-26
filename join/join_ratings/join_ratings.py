@@ -36,6 +36,10 @@ class JoinRatings(Join):
                 self.waiting.pop(client, None)
                 state_changed = True
 
+            for node_id in self.node_instance.last_message_id:
+                if self.node_instance.last_message_id[node_id].pop(client, None) is not None:
+                    state_changed = True
+
             if state_changed:
                 self.persist_state()
             if eof_changed:
