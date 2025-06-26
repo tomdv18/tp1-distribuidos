@@ -94,10 +94,12 @@ class Generic:
 
         if len(client_batch) >= constants.BATCH_SIZE or last_eof:
             self.persist_state()
-            print("persisti estado")
+            #print("persisti estado")
+            #import time
+            #time.sleep(0.2)
             for ch, method in client_batch:
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-            print("fin de mandar acks")
+            #print("fin de mandar acks")
 
             self.batch.pop(client, None)
     
