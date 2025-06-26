@@ -25,10 +25,19 @@ class AggregatorQ2(Generic):
                 self.clients_ended.pop(client, None)
                 self.persist_eof()
             
+            state_changed = False
+            
             if client in self.budgets:
                 print(f" [*] Removing client {client} from budgets due to timeout.")
                 self.budgets.pop(client, None)
-                self.persist_state()
+                state_changed = True
+
+            for node_id in self.node_instance.last_message_id:
+                if self.node_instance.last_message_id[node_id].pop(client, None) is not None:
+                    state_changed = True
+
+            if state_changed:
+                self.node_instance.persist_state()
 
             if client in self.batch:
                 print(f" [*] Removing client {client} from batch due to timeout.")
@@ -78,6 +87,8 @@ class AggregatorQ2(Generic):
                 self.node_instance.send_end_message('results', client)
                 self.budgets.pop(client, None)
                 self.clients_ended.pop(client, None)
+                for node_id in self.node_instance.last_message_id:
+                    self.node_instance.last_message_id[node_id].pop(client, None)
             
             self.persist_eof()
             #self.persist_state()
