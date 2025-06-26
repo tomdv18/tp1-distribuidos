@@ -2,11 +2,62 @@ import constants
 import node
 import os
 from join import Join
+import time
 
 class JoinRatings(Join):
     def callback_joined(self, ch, method, _properties, body):
+        if body.decode().startswith(constants.CLIENT_TIMEOUT):
+            client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
+            print(f" [*] Received timeout for client {client}")
+
+            if client not in self.clients_timeout:
+                self.clients_timeout[client] = time.time()
+                self.persist_timeout()
+
+            if client in self.clients_ended_joined:
+                print(f" [*] Removing client {client} from EOF list due to timeout.")
+                self.clients_ended_joined.pop(client, None)
+                self.persist_eof()
+
+            state_changed = False
+            if client in self.clients_ended_metadata:
+                print(f" [*] Removing client {client} from metadata binds due to timeout.")
+                self.clients_ended_metadata.pop(client, None)
+                state_changed = True
+
+            if client in self.clients_ended_joined:
+                print(f" [*] Removing client {client} from joined binds due to timeout.")
+                self.clients_ended_joined.pop(client, None)
+                state_changed = True
+            
+            if client in self.results:
+                print(f" [*] Removing client {client} from results due to timeout.")
+                self.results.pop(client, None)
+                state_changed = True
+
+            if client in self.waiting:
+                print(f" [*] Removing client {client} from waiting due to timeout.")
+                self.waiting.pop(client, None)
+                state_changed = True
+
+            if state_changed:
+                self.persist_state() ## IMPLEMENTAR
+
+            self.node_instance.send_timeout_message(
+                routing_key=method.routing_key,
+                client=client
+            )
+
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
+
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
+            if not self.should_process(client):
+                print(f" [*] Ignoring EOF for client {client} due to timeout.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
+            
             print(f" [*] Received EOF for ratings bind {method.routing_key} from client {client}")
             if client not in self.clients_ended_joined:
                 self.clients_ended_joined[client] = []
@@ -27,6 +78,12 @@ class JoinRatings(Join):
             movie_id = body_split[0]
             rating = body_split[1]
             client = body_split[2]
+
+            if not self.should_process(client):
+                print(f" [*] Ignoring message from client {client} due to timeout.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
+            
             message_id = body_split[3]
             node_id = body_split[4]
             if self.node_instance.is_repeated(message_id, client, node_id):
