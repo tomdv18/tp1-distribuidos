@@ -170,7 +170,7 @@ class Gateway:
         self.consumer.declare_exchange(exchange_name='results', exchange_type='direct')
         self.queue = self.consumer.queue_declare(queue_name=f'results_{client_id}')
         self.consumer.queue_bind(exchange_name='results', queue_name=self.queue, routing_key='results')
-        self.client_timeout = []
+        self.clients_timeout = []
 
     def client_timeout(self, current, conn, addr):
         log(f"[*] Client {addr} timed out, sending timeout message")
@@ -185,7 +185,7 @@ class Gateway:
         
         self.cred_proc.send_timeout(addr)
 
-        self.client_timeout.append(addr)
+        self.clients_timeout.append(addr)
 
     def generate_message_id(self, exchange):
         prefix = {
@@ -280,7 +280,7 @@ class Gateway:
     def collect_results(self, conn, addr):
         try:
             def cb(ch, method, props, body):
-                if addr in self.client_timeout:
+                if addr in self.clients_timeout:
                     log(f"[!] Client {addr} has timed out, ignoring results")
                     ch.basic_ack(delivery_tag=method.delivery_tag)
                     return

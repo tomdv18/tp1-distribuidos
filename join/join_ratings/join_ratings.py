@@ -132,16 +132,16 @@ class JoinRatings(Join):
                     total += float(rating)
                     count += 1
                 self.results[client][movie_id] = (title, count, total, message_id)
-        message_id = 0
+        message_id_to_send = 0
         for movie_id, (title, count, total, message_id) in self.results[client].items():
             if count > 0:
                 avg_rating = total / count
-                row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{avg_rating}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
+                row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{avg_rating}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id_to_send}{constants.SEPARATOR}{self.node_instance.id()}"
                 self.node_instance.send_message(
                     routing_key=movie_id[-1],
                     message=row_str
                 )
-                message_id += 1
+                message_id_to_send += 1
         self.node_instance.send_end_message_to_all_binds(client)
         self.finished.append(client)
         self.remove_client(client)

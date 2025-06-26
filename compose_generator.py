@@ -14,25 +14,25 @@ SERVICE_INSTANCES = {
     'top_rating': 2,
     'top_actors': 2,
     'average_budget': 2,
-    'client': 3
+    'client': 2
 }
 
 CLIENT_FILES = [
     {
-        'movies': 'movies20.csv',
-        'ratings': 'ratings20.csv',
-        'credits': 'credits20.csv'
+        'movies': 'movies_metadata.csv',
+        'ratings': 'ratings_39999.csv',
+        'credits': 'credits20%.csv'
     },
     {
-        'movies': 'movies20.csv',
-        'ratings': 'ratings20.csv',
-        'credits': 'credits20.csv'
-    },
-    {
-        'movies': 'movies21.csv',
-        'ratings': 'ratings21.csv',
-        'credits': 'credits21.csv'
+        'movies': 'movies_metadata.csv',
+        'ratings': 'ratings_39999.csv',
+        'credits': 'credits20%.csv'
     }
+    # {
+    #     'movies': 'movies21.csv',
+    #     'ratings': 'ratings21.csv',
+    #     'credits': 'credits21.csv'
+    # }
 ]
 IMMUTABLE_SERVICES = ['rabbitmq', 'gateway', 'model_downloader', 'aggregator_q2', 'aggregator_q3', 'aggregator_q4', 'aggregator_q5']
 OUTPUT_FILE = 'docker-compose.yaml'
@@ -158,7 +158,7 @@ def generate_scaled_services():
                 env += ['CONSUMER_EXCHANGE=gateway_metadata', 'PUBLISHER_EXCHANGE=overview']
             services[name] = {'build': {'context': '.', 'dockerfile': dockerfile}, 'restart': 'on-failure', 'depends_on': depends, 'environment': env, 'volumes': [f'./volumes/{name}:/app/files']}
             if key == 'overview':
-                services[name].update({'links': ['rabbitmq'], 'volumes': ['./model_downloader/model_volume:/models'], 'healthcheck': {'test': ['CMD', 'test', '-f', '/tmp/model_ready'], 'interval': '5s', 'timeout': '3s', 'retries': 10, 'start_period': '15s'}})
+                services[name].update({'links': ['rabbitmq'], 'volumes': ['./model_downloader/model_volume:/models', f'./volumes/{name}:/app/files'], 'healthcheck': {'test': ['CMD', 'test', '-f', '/tmp/model_ready'], 'interval': '5s', 'timeout': '3s', 'retries': 10, 'start_period': '15s'}})
             if key == 'top_budget':
                 depends['aggregator_q2'] = {'condition': 'service_started'}
                 env += ['CONSUMER_EXCHANGE=filter_one_prod', 'PUBLISHER_EXCHANGE=top_budget']
