@@ -2,10 +2,12 @@ import constants
 import node
 import os
 from generic import Generic
+import json
 
 class TopActors(Generic):
     def __init__(self):
         self.ocurrences = {}
+        self.batch = {}
         super().__init__()
 
     def callback(self, ch, method, _properties, body):
@@ -27,6 +29,7 @@ class TopActors(Generic):
                 self.ocurrences[client] = {} 
             
             if len(self.clients_ended[client]) == self.node_instance.total_binds():
+                self.check_batch(client, last_eof=True)
                 print(f" [*] Client {client} finished all binds.")
                 top_ten = sorted(
                     self.ocurrences[client].items(),
@@ -42,6 +45,10 @@ class TopActors(Generic):
                 self.node_instance.send_end_message_to_all_binds(client)
                 self.ocurrences.pop(client, None)
                 self.clients_ended.pop(client, None)
+
+            self.persist_eof()
+            #self.persist_state()
+            ch.basic_ack(delivery_tag=method.delivery_tag)
         else:
             body_split = body.decode().split(constants.SEPARATOR)
             id = body_split[0]
@@ -64,12 +71,47 @@ class TopActors(Generic):
                 self.node_instance.last_message_id[node_id] = {}
             self.node_instance.last_message_id[node_id][client] = body_split[-2]
 
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+            if client not in self.batch:
+                self.batch[client] = []
+            
+            self.batch[client].append((ch, method))
+
+            self.check_batch(client)
 
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
         print(" [*] Top shutdown.")
+    
+    def persist_state(self):
+        try:
+            with open(f'{constants.PATH}state.json', 'r') as archivo:
+                lines = archivo.readlines()
+        except FileNotFoundError:
+            lines = []
+        
+        nueva_linea = json.dumps({
+            "ocurrences": self.ocurrences,
+            "last_message_id": self.node_instance.last_message_id
+        }) + "\n"
+        lines.append(nueva_linea)
+        
+        # Mantener solo las últimas 5 líneas
+        lines = lines[-5:]
+        
+        # Escribir a archivo temporal primero
+        temp_file = f'{constants.PATH}state.json.tmp'
+        with open(temp_file, 'w') as archivo:
+            archivo.writelines(lines)
+        
+        # Mover atomicamente usando os.rename
+        os.rename(temp_file, f'{constants.PATH}state.json')
+    
+    def load_custom_state(self, data):
+        if "ocurrences" in data:
+            self.ocurrences = data["ocurrences"]
+        if "last_message_id" in data:
+            self.node_instance.last_message_id = data["last_message_id"]
 
 if __name__ == '__main__':
     TopActors()

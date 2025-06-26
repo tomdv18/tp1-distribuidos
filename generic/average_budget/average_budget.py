@@ -46,7 +46,7 @@ class AverageBudget(Generic):
                 self.clients_ended.pop(client, None)
 
             self.persist_eof()
-            self.persist_state()
+            #self.persist_state()
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         else:

@@ -52,6 +52,19 @@ class Node:
         for bind in self.binds:
             self.send_end_message(bind, client)
 
+    def send_timeout_message(self, routing_key, client):
+        self.publisher.publish_message(
+            exchange_name=self.publisher_exchange,
+            routing_key=routing_key,
+            message=f"{constants.CLIENT_TIMEOUT} {client}"
+        )
+        print(f" [*] Sending CLIENT_TIMEOUT for bind {routing_key}")
+
+    def send_timeout_message_to_all_binds(self, client):
+        for bind in self.binds:
+            self.send_timeout_message(bind, client)
+
+
     def total_binds(self):
         return len(self.binds)
     

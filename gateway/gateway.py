@@ -28,6 +28,14 @@ class CSVProcessor:
         self.closed = False
         self.generate_message_id = id_generator
 
+
+    def send_timeout(self, addr):
+        for i in range(10):
+            self.publisher.publish_message(exchange_name=self.exchange, routing_key=str(i), message=f"{constants.CLIENT_TIMEOUT} {addr}")
+        self.publisher.close_connection()
+        self.closed = True
+        log(f"[x] TIMEOUT sent for client {addr}")    
+
     def process(self, text, addr, partial=False):
         if self.closed:
             return ''
@@ -163,6 +171,19 @@ class Gateway:
         self.queue = self.consumer.queue_declare(queue_name=f'results_{client_id}')
         self.consumer.queue_bind(exchange_name='results', queue_name=self.queue, routing_key='results')
 
+    def client_timeout(self, current, conn, addr):
+        log(f"[*] Client {addr} timed out, sending timeout message")
+
+        if current is None:
+            log(f"[!] Client {addr} timed out with no current file.")
+            return
+        if current == 'movies':
+            self.meta_proc.send_timeout(addr)
+        elif current == 'ratings':
+            self.rate_proc.send_timeout(addr)
+        elif current == 'credits':
+            self.cred_proc.send_timeout(addr)
+
     def generate_message_id(self, exchange):
         prefix = {
             'gateway_metadata': constants.MOVIES_PREFIX,
@@ -186,11 +207,18 @@ class Gateway:
         done = set()
 
         while len(done) < len(expected):
-            chunk = conn.recv(65536)
-            if not chunk:
-                log(" [!] client closed prematurely")
+            try:
+                chunk = conn.recv(65536)
+                if not chunk:
+                    log(" [!] client closed prematurely")
+                    self.client_timeout(current, conn, addr)
+                    break
+                raw += chunk
+            except socket.timeout:
+                log(f"[!] Timeout: no data received from {addr}")
+                self.client_timeout(current, conn, addr)
                 break
-            raw += chunk
+
 
             try:
                 buffer += raw.decode('utf-8')
@@ -285,6 +313,9 @@ class Gateway:
             log("[*] Results sent")
         except Exception as e:
             log(f"[!] Failed to send results: {e}")
+            if addr in self.results:
+                del self.results[addr] 
+                log(f"[!] Cleared results for {addr} due to send failure")
 
 
 def handle_client_wrapper(args):
@@ -292,11 +323,14 @@ def handle_client_wrapper(args):
     client_id = uuid.uuid4()
     gateway = Gateway(client_id)
     with conn:
-        log(f"[+] Connection from {addr} with id {client_id}")        
+        log(f"[+] Connection from {addr} with id {client_id}")
+        conn.settimeout(120)        
         gateway.handle_client(conn, client_id)
         log(f"[*] Finished processing client {client_id}")
+        conn.settimeout(None)  # Short timeout for result collection
         gateway.collect_results(conn, client_id)
         log(f"[*] Finished collecting results for client {client_id}")
+        conn.settimeout(600)
         gateway.send_results(conn, client_id)
         log(f"[*] Finished sending results for client {client_id}")
 
