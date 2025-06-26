@@ -3,6 +3,7 @@ import node
 import os
 from generic import Generic
 import json
+import time
 
 class TopActors(Generic):
     def __init__(self):
@@ -11,8 +12,50 @@ class TopActors(Generic):
         super().__init__()
 
     def callback(self, ch, method, _properties, body):
+        if body.decode().startswith(constants.CLIENT_TIMEOUT):
+            client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
+            print(f" [*] Received timeout for client {client}")
+
+            if client not in self.clients_timeout:
+                self.clients_timeout[client] = time.time()
+                self.persist_timeout()
+
+            if client in self.clients_ended:
+                print(f" [*] Removing client {client} from EOF list due to timeout.")
+                self.clients_ended.pop(client, None)
+                self.persist_eof()
+
+            state_changed = False
+
+            if client in self.ocurrences:
+                print(f" [*] Removing client {client} from occurrences due to timeout.")
+                self.ocurrences.pop(client, None)
+                state_changed = True
+
+            for node_id in self.node_instance.last_message_id:
+                if self.node_instance.last_message_id[node_id].pop(client, None) is not None:
+                    state_changed = True
+
+            if state_changed:
+                self.persist_state()
+
+            if client in self.batch:
+                print(f" [*] Removing client {client} from batch due to timeout.")
+                self.batch.pop(client, None)
+
+            self.node_instance.send_timeout_message(
+                routing_key=method.routing_key,
+                client=client
+            )
+
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
+            if not self.should_process(client):
+                print(f" [*] Ignoring EOF for client {client} due to timeout.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
             print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
             
             if client not in self.clients_ended:
@@ -56,6 +99,10 @@ class TopActors(Generic):
             id = body_split[0]
             name = body_split[1]
             client = body_split[3]
+            if not self.should_process(client):
+                print(f" [*] Ignoring message for client {client} due to timeout.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
             message_id = body_split[4]
             node_id = body_split[5]
             if self.node_instance.is_repeated(message_id, client, node_id):
