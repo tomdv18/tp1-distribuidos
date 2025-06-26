@@ -117,6 +117,9 @@ def generate_scaled_services():
             if key == 'top_budget':
                 eof_count = SERVICE_INSTANCES.get('filter_one_prod', 0)
                 env.append(f"EOF={eof_count}")
+            if key == 'top_actors':
+                eof_count = SERVICE_INSTANCES.get('join_credits', 0)
+                env.append(f"EOF={eof_count}")
             depends = {'rabbitmq': {'condition': 'service_healthy'}}
             if key == 'filter_spain_argentina':
                 prev = SERVICE_INSTANCES.get('filter_years_2000_q1', 1)
