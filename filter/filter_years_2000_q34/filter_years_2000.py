@@ -11,6 +11,9 @@ class Filter2000s(Filter):
             client = body_split[3]
             message_id = body_split[4]
 
+            if not self.should_process(client):
+                return None, None
+
             row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
             return str(movie_id[-1]), row_str
         return None, None
