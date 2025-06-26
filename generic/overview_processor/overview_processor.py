@@ -69,9 +69,42 @@ class OverviewProcessor(Generic):
             )
 
     def callback(self, ch, method, _properties, body):
+        if body.decode().startswith(constants.CLIENT_TIMEOUT):
+            client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
+            print(f" [*] Received timeout for client {client}")
+
+            if client not in self.clients_timeout:
+                self.clients_timeout[client] = time.time()
+                self.persist_timeout()
+
+            if client in self.clients_ended:
+                print(f" [*] Removing client {client} from EOF list due to timeout.")
+                self.clients_ended.pop(client, None)
+                self.persist_eof()
+
+
+            if client in self.batch:
+                print(f" [*] Removing client {client} from batch due to timeout.")
+                self.batch.pop(client, None)
+
+            for node_id in self.node_instance.last_message_id:
+                if self.node_instance.last_message_id[node_id].pop(client, None) is not None:
+                    self.persist_state()
+                
+
+            self.node_instance.send_timeout_message(
+                routing_key=method.routing_key,
+                client=client
+            )
+
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
-
+            if not self.should_process(client):
+                print(f" [*] Ignoring EOF for client {client} due to timeout.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
             
             if client not in self.clients_ended:
                 self.clients_ended[client] = []
@@ -109,6 +142,11 @@ class OverviewProcessor(Generic):
                 overview = body_split[3]
                 title = body_split[7]
                 client = body_split[8]
+                if not self.should_process(client):
+                    print(f" [*] Ignoring message for client {client} due to timeout.")
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    return
+                
                 message_id = body_split[9]
 
                 body = f"{movie_id}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{title}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"

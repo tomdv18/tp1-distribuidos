@@ -278,38 +278,47 @@ class Gateway:
                 continue
 
     def collect_results(self, conn, addr):
-        def cb(ch, method, props, body):
-            if addr in self.client_timeout:
-                log(f"[!] Client {addr} has timed out, ignoring results")
+        try:
+            def cb(ch, method, props, body):
+                if addr in self.client_timeout:
+                    log(f"[!] Client {addr} has timed out, ignoring results")
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    return
+                msg = body.decode()
+                if msg.startswith(constants.END):
+                    client = msg[len(constants.END):].strip()
+                    print(f"client: {client}, addr: {addr}")
+                    if client == str(addr):
+                        self.client_finished += 1
+                        log(f"[*] Client {addr} send finished {self.client_finished} times. Expected {EOF_WAITING}")
+                        if self.client_finished == EOF_WAITING:
+                            log(f"[*] Received EOF for client {addr}")
+                            ch.basic_ack(delivery_tag=method.delivery_tag)
+                            self.consumer.stop_consuming()
+                            self.consumer.close_connection()
+                            return
+
+                if msg.startswith('Query'):
+                    msg = msg.split(constants.SEPARATOR)
+                    print(f"[*] Received query result: {msg}")
+                    if msg[1] == str(addr):
+                        if addr not in self.results:
+                            self.results[addr] = []
+                        if msg[0] not in self.results[addr]:
+                            self.results[addr].append(msg[0])
+
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-                return
-            msg = body.decode()
-            if msg.startswith(constants.END):
-                client = msg[len(constants.END):].strip()
-                print(f"client: {client}, addr: {addr}")
-                if client == str(addr):
-                    self.client_finished += 1
-                    log(f"[*] Client {addr} send finished {self.client_finished} times. Expected {EOF_WAITING}")
-                    if self.client_finished == EOF_WAITING:
-                        log(f"[*] Received EOF for client {addr}")
-                        ch.basic_ack(delivery_tag=method.delivery_tag)
-                        self.consumer.stop_consuming()
-                        self.consumer.close_connection()
-                        return
 
-            if msg.startswith('Query'):
-                msg = msg.split(constants.SEPARATOR)
-                print(f"[*] Received query result: {msg}")
-                if msg[1] == str(addr):
-                    if addr not in self.results:
-                        self.results[addr] = []
-                    if msg[0] not in self.results[addr]:
-                        self.results[addr].append(msg[0])
+            self.consumer.consume_messages(self.queue, callback=cb)
+            self.consumer.start_consuming()
 
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-
-        self.consumer.consume_messages(self.queue, callback=cb)
-        self.consumer.start_consuming()
+        except Exception as e:
+            log(f"[!] Error while collecting results: {e}")
+            if addr in self.results:
+                del self.results[addr] 
+                log(f"[!] Cleared results for {addr} due to error")
+            self.consumer.stop_consuming()
+            self.consumer.close_connection()
 
     def send_results(self, conn, addr):
         try:
@@ -334,7 +343,7 @@ def handle_client_wrapper(args):
         conn.settimeout(120)        
         gateway.handle_client(conn, client_id)
         log(f"[*] Finished processing client {client_id}")
-        conn.settimeout(None)  # Short timeout for result collection
+        conn.settimeout(900)  
         gateway.collect_results(conn, client_id)
         log(f"[*] Finished collecting results for client {client_id}")
         conn.settimeout(600)
