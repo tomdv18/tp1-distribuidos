@@ -14,6 +14,10 @@ class FilterOneProd(Filter):
             client = body_split[8]
             message_id = body_split[9]
 
+
+            if not self.should_process(client):
+                return None, None
+
             row_str = f"{country_name}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
             key_from_country = self.number_from_country(country_name)
             return str(key_from_country), row_str
@@ -24,8 +28,7 @@ class FilterOneProd(Filter):
             ord(char) for char in country_name
         )
         return number % 10
-
-        
+    
 
 if __name__ == '__main__':
     FilterOneProd()
