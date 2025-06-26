@@ -9,6 +9,7 @@ class JoinRatings(Join):
         if body.decode().startswith(constants.CLIENT_TIMEOUT):
             client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
             print(f" [*] Received timeout for client {client}")
+            self.check_batch(client, last_eof=True)
 
             if client not in self.clients_timeout:
                 self.clients_timeout[client] = time.time()
@@ -57,6 +58,7 @@ class JoinRatings(Join):
             client = body.decode()[len(constants.END):].strip()
             if not self.should_process(client):
                 print(f" [*] Ignoring EOF for client {client} due to timeout.")
+                self.check_batch(client, last_eof=True)
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
             

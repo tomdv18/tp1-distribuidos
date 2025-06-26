@@ -9,6 +9,7 @@ class JoinCredits(Join):
         if body.decode().startswith(constants.CLIENT_TIMEOUT):
             client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
             print(f" [*] Received timeout for client {client}")
+            self.check_batch(client, last_eof=True)
 
             if client not in self.clients_timeout:
                 self.clients_timeout[client] = time.time()

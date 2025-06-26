@@ -15,6 +15,7 @@ class TopBudget(Generic):
 
         if body.decode().startswith(constants.CLIENT_TIMEOUT):
             client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
+            self.check_batch(client, last_eof=True)
             print(f" [*] Received timeout for client {client}")
 
             if client not in self.clients_timeout:
@@ -37,7 +38,7 @@ class TopBudget(Generic):
                     state_changed = True
             
             if state_changed:
-                self.node_instance.persist_state()
+                self.persist_state()
 
 
             if client in self.batch:

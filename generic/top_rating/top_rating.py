@@ -16,6 +16,7 @@ class TopRating(Generic):
 
         if body.decode().startswith(constants.CLIENT_TIMEOUT):
             client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
+            self.check_batch(client, last_eof=True)
             print(f" [*] Received timeout for client {client}")
 
             if client not in self.clients_timeout:
