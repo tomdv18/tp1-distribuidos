@@ -12,6 +12,7 @@ class Join:
         self.waiting = {}
         self.finished = []
         self.clients_timeout = {}
+        self.batch = {}
 
 
         self.node_instance = node.Node(
@@ -23,6 +24,7 @@ class Join:
             ],
             node_id = os.getenv("NODE_ID", ""),
         )
+        self.load_state()
         self.node_instance.start_consuming()
 
     def callback_metadata(self, ch, method, _properties, body):
@@ -34,22 +36,18 @@ class Join:
             if client not in self.clients_timeout:
                 self.clients_timeout[client] = time.time()
                 self.persist_timeout()
-            
-            if client in self.clients_ended:
-                print(f" [*] Removing client {client} from EOF list due to timeout.")
-                self.clients_ended.pop(client, None)
-                self.persist_eof()
                 
             state_changed = False
+            eof_changed = False
             if client in self.clients_ended_metadata:
                 print(f" [*] Removing client {client} from metadata binds due to timeout.")
                 self.clients_ended_metadata.pop(client, None)
-                state_changed = True
+                eof_changed = True
 
             if client in self.clients_ended_joined:
                 print(f" [*] Removing client {client} from joined binds due to timeout.")
                 self.clients_ended_joined.pop(client, None)
-                state_changed = True
+                eof_changed = True
             
             if client in self.results:
                 print(f" [*] Removing client {client} from results due to timeout.")
@@ -62,7 +60,9 @@ class Join:
                 state_changed = True
 
             if state_changed:
-                self.persist_state() ## IMPLEMENTAR
+                self.persist_state()
+            if eof_changed:
+                self.persist_eof()
 
             self.node_instance.send_timeout_message(
                 routing_key=method.routing_key,
@@ -92,9 +92,13 @@ class Join:
 
             if len(self.clients_ended_metadata[client]) == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all metadata binds.")
+                self.check_batch(client, last_eof=True)
                 if client in self.clients_ended_joined and len(self.clients_ended_joined[client]) == self.node_instance.total_binds():
                     self.send_pending(client)
 
+            self.persist_eof()
+            #self.persist_state()
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)
@@ -112,7 +116,12 @@ class Join:
             if movie_id not in self.results[client]:
                 self.results[client][movie_id] = (title, 0, 0, message_id)
         
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+            if client not in self.batch:
+                self.batch[client] = []
+            
+            self.batch[client].append((ch, method))
+
+            self.check_batch(client)
 
     def callback_joined(self, _ch, method, _properties, body):
         raise NotImplementedError("Subclass responsibility")
@@ -131,6 +140,21 @@ class Join:
         self.node_instance.close_publisher_connection()
         print(" [*] Join shutdown.")
 
+    def check_batch(self, client, last_eof=False):
+        if client not in self.batch:
+            return
+        client_batch = self.batch[client]
+
+        if len(client_batch) >= constants.BATCH_SIZE or last_eof:
+            self.persist_state()
+            #print("persisti estado")
+            #import time
+            #time.sleep(0.2)
+            for ch, method in client_batch:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+            #print("fin de mandar acks")
+
+            self.batch.pop(client, None)
         
     def should_process(self, client):
         return client not in self.clients_timeout
@@ -152,7 +176,11 @@ class Join:
                     line = lines[i].strip()
                     if line:  # Si la línea no está vacía
                         try:
-                            self.clients_ended = json.loads(line)
+                            data = json.loads(line)
+                            if "clients_ended_metadata" in data:
+                                self.clients_ended_metadata = data["clients_ended_metadata"]
+                            if "clients_ended_joined" in data:
+                                self.clients_ended_joined = data["clients_ended_joined"]
                             print(f"Cargado clients_ended desde línea {i+1} de {eof_path}")
                             break
                         except json.JSONDecodeError as e:
@@ -222,10 +250,37 @@ class Join:
 
 
     def load_custom_state(self, data):
-        raise NotImplementedError("Subclass responsibility")
+        if "results" in data:
+            self.results = data["results"]
+        if "waiting" in data:
+            self.waiting = data["waiting"]
+        if "finished" in data:
+            self.finished = data["finished"]
+        if "last_message_id" in data:
+            self.node_instance.last_message_id = data["last_message_id"]
     
     def persist_state(self):
-        raise NotImplementedError("Subclass responsibility")
+        try:
+            with open(f'{constants.PATH}state.json', 'r') as archivo:
+                lines = archivo.readlines()
+        except FileNotFoundError:
+            lines = []
+        
+        nueva_linea = json.dumps({
+            "top_rating": self.top_rating,
+            "worst_rating": self.worst_rating,
+            "finished": self.finished,
+            "last_message_id": self.node_instance.last_message_id
+        }) + "\n"
+        lines.append(nueva_linea)
+        
+        lines = lines[-5:]
+        
+        temp_file = f'{constants.PATH}state.json.tmp'
+        with open(temp_file, 'w') as archivo:
+            archivo.writelines(lines)
+        
+        os.rename(temp_file, f'{constants.PATH}state.json')
     
     def persist_eof(self):
         try:
@@ -234,7 +289,10 @@ class Join:
         except FileNotFoundError:
             lines = []
         
-        nueva_linea = json.dumps(self.clients_ended) + "\n"
+        nueva_linea = json.dumps({
+            "clients_ended_metadata": self.clients_ended_metadata,
+            "clients_ended_joined": self.clients_ended_joined
+        }) + "\n"
         lines.append(nueva_linea)
         
         # Mantener solo las últimas 5 líneas

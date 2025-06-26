@@ -14,21 +14,17 @@ class JoinRatings(Join):
                 self.clients_timeout[client] = time.time()
                 self.persist_timeout()
 
-            if client in self.clients_ended_joined:
-                print(f" [*] Removing client {client} from EOF list due to timeout.")
-                self.clients_ended_joined.pop(client, None)
-                self.persist_eof()
-
             state_changed = False
+            eof_changed = False
             if client in self.clients_ended_metadata:
                 print(f" [*] Removing client {client} from metadata binds due to timeout.")
                 self.clients_ended_metadata.pop(client, None)
-                state_changed = True
+                eof_changed = True
 
             if client in self.clients_ended_joined:
                 print(f" [*] Removing client {client} from joined binds due to timeout.")
                 self.clients_ended_joined.pop(client, None)
-                state_changed = True
+                eof_changed = True
             
             if client in self.results:
                 print(f" [*] Removing client {client} from results due to timeout.")
@@ -41,7 +37,9 @@ class JoinRatings(Join):
                 state_changed = True
 
             if state_changed:
-                self.persist_state() ## IMPLEMENTAR
+                self.persist_state()
+            if eof_changed:
+                self.persist_eof()
 
             self.node_instance.send_timeout_message(
                 routing_key=method.routing_key,
@@ -70,8 +68,13 @@ class JoinRatings(Join):
             self.clients_ended_joined[client].append(method.routing_key)
             if len(self.clients_ended_joined[client]) == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all ratings binds.")
+                self.check_batch(client, last_eof=True)
                 if client in self.clients_ended_metadata and len(self.clients_ended_metadata[client]) == self.node_instance.total_binds():
                     self.send_pending(client)
+            
+            self.persist_eof()
+            #self.persist_state()
+            ch.basic_ack(delivery_tag=method.delivery_tag)
                 
         else:
             body_split = body.decode().split(constants.SEPARATOR)
@@ -107,7 +110,12 @@ class JoinRatings(Join):
                 self.node_instance.last_message_id[node_id] = {}
             self.node_instance.last_message_id[node_id][client] = body_split[-2]
 
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+            if client not in self.batch:
+                self.batch[client] = []
+            
+            self.batch[client].append((ch, method))
+
+            self.check_batch(client)
 
     def send_pending(self, client):
         if client in self.finished:
