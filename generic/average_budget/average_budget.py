@@ -62,11 +62,6 @@ class AverageBudget(Generic):
             client = body.decode()[len(constants.END):].strip()
             if not self.should_process(client):
                 print(f" [*] Ignoring EOF for client {client} due to timeout.")
-                self.results.pop(client, None)
-                self.cant.pop(client, None)
-                self.clients_ended.pop(client, None)
-                for node_id in self.node_instance.last_message_id:
-                    self.node_instance.last_message_id[node_id].pop(client, None)
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
             
@@ -115,7 +110,6 @@ class AverageBudget(Generic):
             client = body_split[6]
             if not self.should_process(client):
                 print(f" [*] Ignoring message for client {client} due to timeout.")
-                self.check_batch(client, last_eof=True)
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
             message_id = body_split[7]
