@@ -53,26 +53,29 @@ class TopBudget(Generic):
             return
         
         if body.decode().startswith(constants.END):
-            client = body.decode()[len(constants.END):].strip()
+            body_split = body.decode().split(constants.SEPARATOR)
+            client = body_split[1]
+            node_id = body_split[2]
             if not self.should_process(client):
                 print(f" [*] Ignoring EOF for client {client} due to timeout.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
             
-            print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
+            print(f" [*] Received EOF for bind {method.routing_key} from client {client} from {node_id}")
 
             
             if client not in self.clients_ended:
                 self.clients_ended[client] = []
 
-            if method.routing_key in self.clients_ended[client]:
-                print(f" [!] Duplicate EOF from routing key {method.routing_key} for client {client} — ignored.")
+            combination = method.routing_key + node_id
+            if combination in self.clients_ended[client]:
+                print(f" [!] Duplicate EOF from routing key {method.routing_key} for client {client} from node_id {node_id} — ignored.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return
 
-            self.clients_ended[client].append(method.routing_key)
+            self.clients_ended[client].append(combination)
 
-            if len(self.clients_ended[client]) == self.node_instance.total_binds():
+            if len(self.clients_ended[client]) == self.node_instance.total_binds() * int(os.getenv('EOF', '0')):
                 self.check_batch(client, last_eof=True)
 
                 print(f" [*] Client {client} finished all binds.")
@@ -96,7 +99,7 @@ class TopBudget(Generic):
 
 
             self.persist_eof()
-            #self.persist_state()
+            self.persist_state()
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
 

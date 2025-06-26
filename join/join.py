@@ -97,7 +97,7 @@ class Join:
                     self.send_pending(client)
 
             self.persist_eof()
-            #self.persist_state()
+            self.persist_state()
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         else:

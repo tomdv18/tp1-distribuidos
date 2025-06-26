@@ -99,7 +99,7 @@ class AggregatorQ5(Generic):
                     self.node_instance.last_message_id[node_id].pop(client, None)
 
             self.persist_eof()
-            #self.persist_state()
+            self.persist_state()
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         else:

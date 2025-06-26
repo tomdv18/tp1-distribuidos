@@ -77,7 +77,7 @@ class JoinRatings(Join):
                     self.send_pending(client)
             
             self.persist_eof()
-            #self.persist_state()
+            self.persist_state()
             ch.basic_ack(delivery_tag=method.delivery_tag)
                 
         else:
@@ -132,6 +132,7 @@ class JoinRatings(Join):
                     total += float(rating)
                     count += 1
                 self.results[client][movie_id] = (title, count, total, message_id)
+        message_id = 0
         for movie_id, (title, count, total, message_id) in self.results[client].items():
             if count > 0:
                 avg_rating = total / count
@@ -140,6 +141,7 @@ class JoinRatings(Join):
                     routing_key=movie_id[-1],
                     message=row_str
                 )
+                message_id += 1
         self.node_instance.send_end_message_to_all_binds(client)
         self.finished.append(client)
         self.remove_client(client)

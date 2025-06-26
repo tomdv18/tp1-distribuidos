@@ -80,7 +80,7 @@ class JoinCredits(Join):
                     self.send_pending(client)
             
             self.persist_eof()
-            #self.persist_state()
+            self.persist_state()
             ch.basic_ack(delivery_tag=method.delivery_tag)
                 
         else:
@@ -126,7 +126,7 @@ class JoinCredits(Join):
             self.remove_client(client)
             return
         if client not in self.waiting:
-            self.node_instance.send_end_message_to_all_binds(client)
+            self.send_all_ends(client)
             self.finished.append(client)
             self.remove_client(client)
             return
@@ -140,9 +140,17 @@ class JoinCredits(Join):
                         message=row_str
                     )
                     message_id += 1
-        self.node_instance.send_end_message_to_all_binds(client)
+        self.send_all_ends(client)
         self.finished.append(client)
         self.remove_client(client)
+    
+    def send_all_ends(self, client):
+        for i in range (0, 10):
+            self.node_instance.send_message(
+                routing_key=str(i),
+                message=f"{constants.END}{constants.SEPARATOR}{client}{constants.SEPARATOR}{self.node_instance.id()}"
+            )
+        
 
 if __name__ == '__main__':
     JoinCredits()

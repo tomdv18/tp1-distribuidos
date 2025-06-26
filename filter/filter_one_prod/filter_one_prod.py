@@ -29,6 +29,20 @@ class FilterOneProd(Filter):
         )
         return number % 10
     
+    def end_when_bind_ends(self, bind, client):
+        pass
+
+    def end_when_all_binds_end(self, client):
+        for i in range (0, 10):
+            self.node_instance.send_message(
+                routing_key=str(i),
+                message=f"{constants.END}{constants.SEPARATOR}{client}{constants.SEPARATOR}{self.node_instance.id()}"
+            )
+        # self.node_instance.send_end_message(
+        #     os.getenv("PUBLISHER_EXCHANGE", ""),
+        #     client
+        # )
+    
 
 if __name__ == '__main__':
     FilterOneProd()
