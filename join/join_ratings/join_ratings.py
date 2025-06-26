@@ -46,6 +46,10 @@ class JoinRatings(Join):
                     self.waiting[client][movie_id] = []
                 self.waiting[client][movie_id].append(rating)
 
+            if node_id not in self.node_instance.last_message_id:
+                self.node_instance.last_message_id[node_id] = {}
+            self.node_instance.last_message_id[node_id][client] = body_split[-2]
+
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def send_pending(self, client):
