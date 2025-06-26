@@ -8,6 +8,7 @@ class AggregatorQ5(Generic):
     def __init__(self):
         self.results = {}
         self.cant = {}
+        self.batch = {}
         super().__init__()
 
     def callback(self, ch, method, _properties, body):
@@ -15,14 +16,19 @@ class AggregatorQ5(Generic):
         if body.decode().startswith(constants.END):
             client = body.decode()[len(constants.END):].strip()
             if client not in self.clients_ended:
-                self.clients_ended[client] = 0
-            self.clients_ended[client] += 1
+                self.clients_ended[client] = []
 
-            print(f" [*] Received EOF for bind {method.routing_key} from client {client}")
+            if method.routing_key in self.clients_ended[client]:
+                print(f" [!] Duplicate EOF from routing key {method.routing_key} for client {client} — ignored.")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
+
+            self.clients_ended[client].append(method.routing_key)
 
 
-            if self.clients_ended[client] == self.node_instance.total_binds():
+            if len(self.clients_ended[client]) == self.node_instance.total_binds():
                 print(f"Client: {client} finished all binds.")
+                self.check_batch(client, last_eof=True)
 
                 
                 for sentiment_label in self.results.get(client, {}):
@@ -39,8 +45,10 @@ class AggregatorQ5(Generic):
                 self.results.pop(client, None)
                 self.cant.pop(client, None)
                 self.clients_ended.pop(client, None)
+
             self.persist_eof()
             self.persist_state()
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)
@@ -74,9 +82,11 @@ class AggregatorQ5(Generic):
                 self.node_instance.last_message_id[node_id] = {}
             self.node_instance.last_message_id[node_id][client] = body_split[-2]
 
-            self.persist_state()
+            if client not in self.batch:
+                self.batch[client] = []
+            
+            self.batch[client].append((ch, method))  
         
-        ch.basic_ack(delivery_tag=method.delivery_tag)
     
     def persist_state(self):
         try:

@@ -7,7 +7,8 @@ import json
 class TopBudget(Generic):
     def __init__(self):
         self.budgets = {}
-        super().__init__(self.leer_budgets)
+        self.batch = {}
+        super().__init__()
 
     def callback(self, ch, method, _properties, body):
         if body.decode().startswith(constants.END):
@@ -25,7 +26,8 @@ class TopBudget(Generic):
 
             self.clients_ended[client].append(method.routing_key)
 
-            if len(self.clients_ended[client]) == int(os.getenv("EOF", "0")):
+            if len(self.clients_ended[client]) == self.node_instance.total_binds():
+                self.check_batch(client, last_eof=True)
 
                 print(f" [*] Client {client} finished all binds.")
                 if client in self.budgets:
@@ -44,24 +46,11 @@ class TopBudget(Generic):
                 self.budgets.pop(client, None)
                 self.clients_ended.pop(client, None)
 
-            
-            if client not in self.node_instance.last_message_id:
-                self.node_instance.last_message_id[client] = f'{constants.END}-{method.routing_key}'
-            self.node_instance.last_message_id[client] = f'{constants.END}-{method.routing_key}'
 
+            self.persist_eof()
+            self.persist_state()
+            ch.basic_ack(delivery_tag=method.delivery_tag)
 
-            with open(f'{constants.PATH}clients_ended.json', 'w') as archivo:
-                json.dump( self.clients_ended, archivo)
-
-            with open(f'{constants.PATH}message_id.json', 'w') as archivo:
-                json.dump(self.node_instance.last_message_id, archivo)
-            
-            with open(f'{constants.PATH}budgets.json', 'w') as archivo:
-                json.dump(self.budgets, archivo)
-            with open(f'{constants.PATH}messages_sended.txt', 'w') as archivo:
-                archivo.write(str(self.messages_sended))
-
-            
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)
@@ -71,7 +60,7 @@ class TopBudget(Generic):
             message_id = body_split[3]
             node_id = body_split[4]
             if self.node_instance.is_repeated(message_id, client, node_id):
-                print(f" [*] Repeated message {message_id} from client {client}. Ignoring.")
+                print(f" [*] Repeated message {message_id} from client {client} w/ node_id {node_id}. Ignoring.")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 return 
             if client not in self.budgets:
@@ -81,40 +70,52 @@ class TopBudget(Generic):
             else:
                 self.budgets[client][country_name] += budget
 
+            if client not in self.batch:
+                self.batch[client] = []
+            
+            self.batch[client].append((ch, method))
+
             if node_id not in self.node_instance.last_message_id:
                 self.node_instance.last_message_id[node_id] = {}
             self.node_instance.last_message_id[node_id][client] = body_split[-2]
 
-            with open(f'{constants.PATH}message_id.json', 'w') as archivo:
-                json.dump(self.node_instance.last_message_id, archivo)
-            
-            with open(f'{constants.PATH}budgets.json', 'w') as archivo:
-                json.dump(self.budgets, archivo)
+            self.check_batch(client)
 
-            with open(f'{constants.PATH}messages_sended.txt', 'w') as archivo:
-                archivo.write(str(self.messages_sended))
-
-            
+    def persist_state(self):
+        try:
+            with open(f'{constants.PATH}state.json', 'r') as archivo:
+                lines = archivo.readlines()
+        except FileNotFoundError:
+            lines = []
         
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        nueva_linea = json.dumps({
+            "budgets": self.budgets,
+            "last_message_id": self.node_instance.last_message_id
+        }) + "\n"
+        lines.append(nueva_linea)
+        
+        # Mantener solo las últimas 5 líneas
+        lines = lines[-5:]
+        
+        # Escribir a archivo temporal primero
+        temp_file = f'{constants.PATH}state.json.tmp'
+        with open(temp_file, 'w') as archivo:
+            archivo.writelines(lines)
+        
+        # Mover atomicamente usando os.rename
+        os.rename(temp_file, f'{constants.PATH}state.json')
+    
+    def load_custom_state(self, data):
+        if "budgets" in data:
+            self.budgets = data["budgets"]
+        if "last_message_id" in data:
+            self.node_instance.last_message_id = data["last_message_id"]
+ 
 
     def shutdown(self):
         self.node_instance.stop_consuming_and_close_connection()
         self.node_instance.close_publisher_connection()
         print(" [*] Top shutdown.")
-
-    def leer_budgets(self):
-        budgets_path = os.path.join(constants.PATH, "budgets.json")
-        if os.path.isfile(budgets_path):
-            try:
-                with open(budgets_path, 'r') as f:
-                    self.budgets = json.load(f)
-                print(f"Cargado budgets desde {budgets_path}")
-            except Exception as e:
-                print(f"Error cargando budgets: {e}")
-                self.budgets = {}
-        else:
-            print("No se encontró budgets.json, iniciando vacío.")
             
 
 if __name__ == '__main__':

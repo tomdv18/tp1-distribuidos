@@ -19,32 +19,56 @@ class Filter:
         self.load_state()
 
         self.node_instance.start_consuming()
-
+    
     def load_state(self):
-        clients_ended_path = os.path.join(constants.PATH, "clients_ended.json")
-        message_id_path = os.path.join(constants.PATH, "message_id.json")
+        eof_path = os.path.join(constants.PATH, "eof.json")
 
-        if os.path.isfile(clients_ended_path):
+        if os.path.isfile(eof_path):
             try:
-                with open(clients_ended_path, 'r') as f:
-                    self.clients_ended = json.load(f)
-                print(f"Cargado clients_ended desde {clients_ended_path}")
+                with open(eof_path, 'r') as f:
+                    lines = f.readlines()
+                
+                # Intentar cargar desde la última línea hacia atrás
+                for i in range(len(lines) - 1, -1, -1):
+                    line = lines[i].strip()
+                    if line:  # Si la línea no está vacía
+                        try:
+                            self.clients_ended = json.loads(line)
+                            print(f"Cargado clients_ended desde línea {i+1} de {eof_path}")
+                            break
+                        except json.JSONDecodeError as e:
+                            print(f"Error parseando línea {i+1} del EOF: {e}, intentando con anterior...")
+                            continue
+                else:
+                    print("No se pudo cargar ninguna línea válida del EOF")
+                    self.clients_ended = {}
+                    
             except Exception as e:
-                print(f"Error cargando clients_ended: {e}")
+                print(f"Error leyendo archivo EOF: {e}")
                 self.clients_ended = {}
         else:
-            print("No se encontró clients_ended.json, iniciando vacío.")
-
-        if os.path.isfile(message_id_path):
-            try:
-                with open(message_id_path, 'r') as f:
-                    self.node_instance.last_message_id = json.load(f)
-                print(f"Cargado last_message_id desde {message_id_path}")
-            except Exception as e:
-                print(f"Error cargando last_message_id: {e}")
-                self.node_instance.last_message_id = {}
-        else:
-            print("No se encontró message_id.json, iniciando vacío.")
+            print("No se encontró eof.json, iniciando vacío.")
+    
+    def persist_eof(self):
+        try:
+            with open(f'{constants.PATH}eof.json', 'r') as archivo:
+                lines = archivo.readlines()
+        except FileNotFoundError:
+            lines = []
+        
+        nueva_linea = json.dumps(self.clients_ended) + "\n"
+        lines.append(nueva_linea)
+        
+        # Mantener solo las últimas 5 líneas
+        lines = lines[-5:]
+        
+        # Escribir a archivo temporal primero
+        temp_file = f'{constants.PATH}eof.json.tmp'
+        with open(temp_file, 'w') as archivo:
+            archivo.writelines(lines)
+        
+        # Mover atomicamente usando os.rename
+        os.rename(temp_file, f'{constants.PATH}eof.json')
 
     def callback(self, ch, method, _properties, body):
         if body.decode().startswith(constants.END):
@@ -63,27 +87,14 @@ class Filter:
 
             self.clients_ended[client].append(method.routing_key)
 
-
             self.end_when_bind_ends(method.routing_key, client)
             if len(self.clients_ended[client]) == self.node_instance.total_binds():
                 print(f" [*] Client {client} finished all binds.")
-                self.end_when_all_binds_end(client)
+                #self.end_when_all_binds_end(client)
                 self.clients_ended.pop(client, None)
             
-            
-            if client not in self.node_instance.last_message_id:
-                self.node_instance.last_message_id[client] = f'{constants.END}-{method.routing_key}'
-            self.node_instance.last_message_id[client] = f'{constants.END}-{method.routing_key}'
 
-
-            with open(f'{constants.PATH}clients_ended.json', 'w') as archivo:
-                json.dump( self.clients_ended, archivo)
-
-            with open(f'{constants.PATH}message_id.json', 'w') as archivo:
-                json.dump(self.node_instance.last_message_id, archivo)
-            
-
-             
+            self.persist_eof()
 
         else:
             body_split = body.decode().split(constants.SEPARATOR)
@@ -93,16 +104,10 @@ class Filter:
                     routing_key=routing_key,
                     message=row_str
                 )
-
-            with open(f'{constants.PATH}message_id.json', 'w') as archivo:
-                    json.dump(self.node_instance.last_message_id, archivo)
         
-        
-        
+    
         ch.basic_ack(delivery_tag=method.delivery_tag)
         
-
-            
 
     def end_when_bind_ends(self, bind, client):
         self.node_instance.send_end_message(bind, client)

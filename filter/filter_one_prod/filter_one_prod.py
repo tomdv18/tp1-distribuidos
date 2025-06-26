@@ -26,7 +26,7 @@ class FilterOneProd(Filter):
         return number % 10
     
     def end_when_bind_ends(self, bind, client):
-        pass
+        self.node_instance.send_end_message(bind, client)
 
     def end_when_all_binds_end(self, client):
         self.node_instance.send_end_message("-1", client)
