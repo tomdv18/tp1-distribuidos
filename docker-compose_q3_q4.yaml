@@ -171,8 +171,8 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - MOVIES_FILE=movies_metadata.csv
-      - RATINGS_FILE=ratings20%.csv
-      - CREDITS_FILE=credits20%.csv
+      - RATINGS_FILE=ratings_39999.csv
+      - CREDITS_FILE=credits.csv
   #client_2:
   #  build:
   #    context: .

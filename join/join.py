@@ -145,7 +145,7 @@ class Join:
             return
         client_batch = self.batch[client]
 
-        if len(client_batch) >= constants.BATCH_SIZE or last_eof:
+        if len(client_batch) >= 40000 or last_eof:
             self.persist_state()
             #print("persisti estado")
             #import time
