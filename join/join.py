@@ -267,8 +267,8 @@ class Join:
             lines = []
         
         nueva_linea = json.dumps({
-            "top_rating": self.top_rating,
-            "worst_rating": self.worst_rating,
+            "results": self.results,
+            "waiting": self.waiting,
             "finished": self.finished,
             "last_message_id": self.node_instance.last_message_id
         }) + "\n"
