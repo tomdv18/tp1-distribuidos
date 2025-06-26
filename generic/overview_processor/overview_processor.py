@@ -71,7 +71,8 @@ class OverviewProcessor(Generic):
     def callback(self, ch, method, _properties, body):
         if body.decode().startswith(constants.CLIENT_TIMEOUT):
             client = body.decode()[len(constants.CLIENT_TIMEOUT):].strip()
-            self.check_batch(client, last_eof=True)
+            #self.check_batch(client, last_eof=True)
+            self.clean_batch(client, ch)
             print(f" [*] Received timeout for client {client}")
 
             if client not in self.clients_timeout:
@@ -174,6 +175,11 @@ class OverviewProcessor(Generic):
     def persist_state(self):
         # no persiste estado
         pass
+
+    def clean_batch(self, client, ch):
+        if client in self.batch:
+            for m, _ in self.batch[client]:
+                ch.basic_ack(delivery_tag=m.delivery_tag)
         
 
 if __name__ == '__main__':
