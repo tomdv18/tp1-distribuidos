@@ -177,12 +177,12 @@ class Gateway:
         if current is None:
             log(f"[!] Client {addr} timed out with no current file.")
             return
-        if current == 'movies':
-            self.meta_proc.send_timeout(addr)
-        elif current == 'ratings':
-            self.rate_proc.send_timeout(addr)
-        elif current == 'credits':
-            self.cred_proc.send_timeout(addr)
+        
+        self.meta_proc.send_timeout(addr)
+        
+        self.rate_proc.send_timeout(addr)
+        
+        self.cred_proc.send_timeout(addr)
 
     def generate_message_id(self, exchange):
         prefix = {
