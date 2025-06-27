@@ -304,8 +304,8 @@ class Gateway:
                     if msg[1] == str(addr):
                         if addr not in self.results:
                             self.results[addr] = []
-                        if msg[0] not in self.results[addr]:
-                            self.results[addr].append(msg[0])
+                        if msg[0].rstrip() not in self.results[addr]:
+                            self.results[addr].append(msg[0].rstrip())
 
                 ch.basic_ack(delivery_tag=method.delivery_tag)
 
