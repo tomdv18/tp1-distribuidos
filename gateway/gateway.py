@@ -3,10 +3,7 @@ import os
 import csv
 import io
 import ast
-import time
 from multiprocessing import Pool
-import signal
-import sys
 import uuid
 from queue_manager.queue_manager import QueueManagerPublisher, QueueManagerConsumer
 import constants
@@ -20,7 +17,7 @@ def log(msg):
     print(f"[PID {os.getpid()}] {msg}")
 
 class CSVProcessor:
-    def __init__(self, publisher, exchange, skip_header=True, log_interval=10000, end_marker=constants.END):
+    def __init__(self, publisher, exchange, id_generator, skip_header=True, log_interval=10000, end_marker=constants.END):
         self.publisher = publisher
         self.exchange = exchange
         self.skip_header = skip_header
@@ -29,6 +26,15 @@ class CSVProcessor:
         self.residual = ''
         self.count = 0
         self.closed = False
+        self.generate_message_id = id_generator
+
+
+    def send_timeout(self, addr):
+        for i in range(10):
+            self.publisher.publish_message(exchange_name=self.exchange, routing_key=str(i), message=f"{constants.CLIENT_TIMEOUT} {addr}")
+        self.publisher.close_connection()
+        self.closed = True
+        log(f"[x] TIMEOUT sent for client {addr}")    
 
     def process(self, text, addr, partial=False):
         if self.closed:
@@ -71,13 +77,15 @@ class CSVProcessor:
             )
             if not all([movie_id, genres, budget, overview, countries, date, revenue, title]):
                 return None, None
-
-            msg = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{countries}{constants.SEPARATOR}{date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}{constants.SEPARATOR}{addr}"
             
+            msg = f"{movie_id}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{budget}{constants.SEPARATOR}{overview}{constants.SEPARATOR}{countries}{constants.SEPARATOR}{date}{constants.SEPARATOR}{revenue}{constants.SEPARATOR}{title}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}{constants.SEPARATOR}1"
+
         elif self.exchange == 'gateway_ratings':
             if len(row) < 3 or not row[1] or not row[2]:
                 return None, None
-            msg = f"{row[1]}{constants.SEPARATOR}{row[2]}{constants.SEPARATOR}{addr}"
+            msg = f"{row[1]}{constants.SEPARATOR}{row[2]}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}{constants.SEPARATOR}1"
+
+
             movie_id = row[1]
         elif self.exchange == 'gateway_credits':
             return None, None
@@ -128,7 +136,9 @@ class CreditsProcessor(CSVProcessor):
                 cast_list = ast.literal_eval(row['cast'])
                 movie_id = row['id']
                 for actor in cast_list:
-                    msg = f"{movie_id}{constants.SEPARATOR}{actor['id']}{constants.SEPARATOR}{actor['name']}{constants.SEPARATOR}{addr}"
+                    msg = f"{movie_id}{constants.SEPARATOR}{actor['id']}{constants.SEPARATOR}{actor['name']}{constants.SEPARATOR}{addr}{constants.SEPARATOR}{self.generate_message_id(self.exchange)}{constants.SEPARATOR}1"
+        
+
                     key = movie_id[-1]
                     self._publish(key, msg)
             except Exception:
@@ -138,12 +148,19 @@ class CreditsProcessor(CSVProcessor):
 
 
 class Gateway:
-    def __init__(self):
-        self.meta_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_metadata')
+    def __init__(self, client_id):
+
+        self.message_counters = { # Cuenta los mensajes enviados por exchange
+            'gateway_metadata': 0,
+            'gateway_ratings': 0,
+            'gateway_credits': 0
+        }
+
+        self.meta_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_metadata',id_generator=self.generate_message_id)
         self.meta_proc.publisher.declare_exchange('gateway_metadata', 'direct')
-        self.rate_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_ratings', log_interval=1000000)
+        self.rate_proc = CSVProcessor(QueueManagerPublisher(), 'gateway_ratings', id_generator=self.generate_message_id, log_interval=1000000)
         self.rate_proc.publisher.declare_exchange('gateway_ratings', 'direct')
-        self.cred_proc = CreditsProcessor(QueueManagerPublisher(), 'gateway_credits')
+        self.cred_proc = CreditsProcessor(QueueManagerPublisher(), 'gateway_credits', id_generator=self.generate_message_id)
         self.cred_proc.publisher.declare_exchange('gateway_credits', 'direct')
 
         self.results = {}
@@ -151,8 +168,36 @@ class Gateway:
         self.client_finished = 0
         self.consumer = QueueManagerConsumer()
         self.consumer.declare_exchange(exchange_name='results', exchange_type='direct')
-        self.queue = self.consumer.queue_declare(queue_name='')
+        self.queue = self.consumer.queue_declare(queue_name=f'results_{client_id}')
         self.consumer.queue_bind(exchange_name='results', queue_name=self.queue, routing_key='results')
+        self.clients_timeout = []
+
+    def client_timeout(self, current, conn, addr):
+        log(f"[*] Client {addr} timed out, sending timeout message")
+
+        if current is None:
+            log(f"[!] Client {addr} timed out with no current file.")
+            return
+        
+        self.meta_proc.send_timeout(addr)
+        
+        self.rate_proc.send_timeout(addr)
+        
+        self.cred_proc.send_timeout(addr)
+
+        self.clients_timeout.append(addr)
+
+    def generate_message_id(self, exchange):
+        prefix = {
+            'gateway_metadata': constants.MOVIES_PREFIX,
+            'gateway_ratings': constants.RATINGS_PREFIX,
+            'gateway_credits': constants.CREDITS_PREFIX
+        }.get(exchange, 'X')
+
+        counter = self.message_counters[exchange]
+        self.message_counters[exchange] += 1
+        return counter
+
 
     def handle_client(self, conn, addr):
         content_buffer = ''
@@ -165,11 +210,18 @@ class Gateway:
         done = set()
 
         while len(done) < len(expected):
-            chunk = conn.recv(65536)
-            if not chunk:
-                log(" [!] client closed prematurely")
+            try:
+                chunk = conn.recv(65536)
+                if not chunk:
+                    log(" [!] client closed prematurely")
+                    self.client_timeout(current, conn, addr)
+                    break
+                raw += chunk
+            except socket.timeout:
+                log(f"[!] Timeout: no data received from {addr}")
+                self.client_timeout(current, conn, addr)
                 break
-            raw += chunk
+
 
             try:
                 buffer += raw.decode('utf-8')
@@ -226,28 +278,47 @@ class Gateway:
                 continue
 
     def collect_results(self, conn, addr):
-        def cb(ch, method, props, body):
-            msg = body.decode()
-            if msg.startswith(constants.END):
-                client = msg[len(constants.END):].strip()
-                if client == str(addr):
-                    self.client_finished += 1
-                    log(f"[*] Client {addr} send finished {self.client_finished} times. Expected {EOF_WAITING}")
-                    if self.client_finished == EOF_WAITING:
-                        log(f"[*] Received EOF for client {addr}")
-                        self.consumer.stop_consuming()
-                        self.consumer.close_connection()
-                return
+        try:
+            def cb(ch, method, props, body):
+                if addr in self.clients_timeout:
+                    log(f"[!] Client {addr} has timed out, ignoring results")
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    return
+                msg = body.decode()
+                if msg.startswith(constants.END):
+                    client = msg[len(constants.END):].strip()
+                    print(f"client: {client}, addr: {addr}")
+                    if client == str(addr):
+                        self.client_finished += 1
+                        log(f"[*] Client {addr} send finished {self.client_finished} times. Expected {EOF_WAITING}")
+                        if self.client_finished == EOF_WAITING:
+                            log(f"[*] Received EOF for client {addr}")
+                            ch.basic_ack(delivery_tag=method.delivery_tag)
+                            self.consumer.stop_consuming()
+                            self.consumer.close_connection()
+                            return
 
-            if msg.startswith('Query'):
-                msg = msg.split(constants.SEPARATOR)
-                if msg[1] == str(addr):
-                    if addr not in self.results:
-                        self.results[addr] = []
-                    self.results[addr].append(msg[0])
+                if msg.startswith('Query'):
+                    msg = msg.split(constants.SEPARATOR)
+                    print(f"[*] Received query result: {msg}")
+                    if msg[1] == str(addr):
+                        if addr not in self.results:
+                            self.results[addr] = []
+                        if msg[0].rstrip() not in self.results[addr]:
+                            self.results[addr].append(msg[0].rstrip())
 
-        self.consumer.consume_messages(self.queue, callback=cb)
-        self.consumer.start_consuming()
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+
+            self.consumer.consume_messages(self.queue, callback=cb)
+            self.consumer.start_consuming()
+
+        except Exception as e:
+            log(f"[!] Error while collecting results: {e}")
+            if addr in self.results:
+                del self.results[addr] 
+                log(f"[!] Cleared results for {addr} due to error")
+            self.consumer.stop_consuming()
+            self.consumer.close_connection()
 
     def send_results(self, conn, addr):
         try:
@@ -258,18 +329,24 @@ class Gateway:
             log("[*] Results sent")
         except Exception as e:
             log(f"[!] Failed to send results: {e}")
+            if addr in self.results:
+                del self.results[addr] 
+                log(f"[!] Cleared results for {addr} due to send failure")
 
 
 def handle_client_wrapper(args):
     conn, addr = args
     client_id = uuid.uuid4()
-    gateway = Gateway()
+    gateway = Gateway(client_id)
     with conn:
-        log(f"[+] Connection from {addr} with id {client_id}")        
+        log(f"[+] Connection from {addr} with id {client_id}")
+        conn.settimeout(120)        
         gateway.handle_client(conn, client_id)
         log(f"[*] Finished processing client {client_id}")
+        conn.settimeout(900)  
         gateway.collect_results(conn, client_id)
         log(f"[*] Finished collecting results for client {client_id}")
+        conn.settimeout(600)
         gateway.send_results(conn, client_id)
         log(f"[*] Finished sending results for client {client_id}")
 

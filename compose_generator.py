@@ -14,28 +14,29 @@ SERVICE_INSTANCES = {
     'top_rating': 2,
     'top_actors': 2,
     'average_budget': 2,
-    'client': 3
+    'client': 2
 }
 
 CLIENT_FILES = [
     {
-        'movies': 'movies20.csv',
-        'ratings': 'ratings20.csv',
-        'credits': 'credits20.csv'
+        'movies': 'movies_metadata.csv',
+        'ratings': 'ratings_39999.csv',
+        'credits': 'credits20%.csv'
     },
     {
-        'movies': 'movies20.csv',
-        'ratings': 'ratings20.csv',
-        'credits': 'credits20.csv'
-    },
-    {
-        'movies': 'movies21.csv',
-        'ratings': 'ratings21.csv',
-        'credits': 'credits21.csv'
+        'movies': 'movies_metadata.csv',
+        'ratings': 'ratings_39999.csv',
+        'credits': 'credits20%.csv'
     }
+    # {
+    #     'movies': 'movies21.csv',
+    #     'ratings': 'ratings21.csv',
+    #     'credits': 'credits21.csv'
+    # }
 ]
 IMMUTABLE_SERVICES = ['rabbitmq', 'gateway', 'model_downloader', 'aggregator_q2', 'aggregator_q3', 'aggregator_q4', 'aggregator_q5']
 OUTPUT_FILE = 'docker-compose.yaml'
+HEALTH_CHECKERS = 3
 
 def distribute_binds(binds, count):
     base, extra = divmod(len(binds), count)
@@ -47,15 +48,29 @@ def distribute_binds(binds, count):
     return result
 
 def build_base_services():
-    return {
+    base = {
         'rabbitmq': {'build': {'context': './rabbitmq', 'dockerfile': 'rabbitmq.dockerfile'}, 'ports': ['15672:15672'], 'healthcheck': {'test': ['CMD', 'rabbitmqctl', 'status'], 'interval': '10s', 'timeout': '5s', 'retries': 5}},
         'gateway': {'build': {'context': '.', 'dockerfile': 'gateway/gateway.dockerfile'}, 'restart': 'on-failure', 'environment': ['PYTHONUNBUFFERED=1']},
         'model_downloader': {'build': {'context': './model_downloader', 'dockerfile': 'model_downloader.dockerfile'}, 'volumes': ['./model_downloader/model_volume:/models']},
-        'aggregator_q2': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q2/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=top_budget', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q2']},
-        'aggregator_q3': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q3/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=top_rating', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q3']},
-        'aggregator_q4': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q4/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=top_actors', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q4']},
-        'aggregator_q5': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q5/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=average_budget', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q5']}
+        'aggregator_q2': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q2/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=top_budget', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q2', 'HEALTH_CHECK_ID=1'], 'volumes': ['./volumes/aggregator_q2:/app/files']},
+        'aggregator_q3': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q3/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=top_rating', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q3', 'HEALTH_CHECK_ID=2'], 'volumes': ['./volumes/aggregator_q3:/app/files']},
+        'aggregator_q4': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q4/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=top_actors', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q4', 'HEALTH_CHECK_ID=3'], 'volumes': ['./volumes/aggregator_q4:/app/files']},
+        'aggregator_q5': {'build': {'context': '.', 'dockerfile': 'generic/aggregator_q5/generic.dockerfile'}, 'restart': 'on-failure', 'depends_on': {'rabbitmq': {'condition': 'service_healthy'}}, 'environment': ['PYTHONUNBUFFERED=1', 'BINDS=0,1,2,3,4,5,6,7,8,9', 'CONSUMER_EXCHANGE=average_budget', 'PUBLISHER_EXCHANGE=results', 'NODE_ID=aggregator_q5', f'HEALTH_CHECK_ID={(4 if HEALTH_CHECKERS >= 4 else 1)}'], 'volumes': ['./volumes/aggregator_q5:/app/files']}
     }
+    for i in range(1, HEALTH_CHECKERS + 1):
+        base[f'health_checker_{i}'] = {
+            'build': {'context': '.', 'dockerfile': 'health_checker/health_checker.dockerfile'},
+            'restart': 'on-failure',
+            'depends_on': {'rabbitmq': {'condition': 'service_healthy'}},
+            'environment': [
+                'PYTHONUNBUFFERED=1',
+                f'PORT=8000',
+                f'ID={i}',
+                f'HC_SIZE={HEALTH_CHECKERS}'
+            ],
+            'volumes': ['/var/run/docker.sock:/var/run/docker.sock']
+        }
+    return base
 
 def generate_scaled_services():
     services = {}
@@ -78,12 +93,11 @@ def generate_scaled_services():
                 f"CREDITS_FILE={files['credits']}"
             ]
         }
+    health_check_id_counter = 1
     for key, count in SERVICE_INSTANCES.items():
         if key == 'client':
             continue
         binds_groups = distribute_binds(TOTAL_BINDS, count)
-        if key == 'top_budget':
-            binds_groups = [group + [-1] for group in binds_groups]
         for idx, binds in enumerate(binds_groups, start=1):
             name = f"{key}_{idx}"
             if key.startswith('filter_'):
@@ -95,8 +109,16 @@ def generate_scaled_services():
             else:
                 dockerfile = f"generic/{key}/generic.dockerfile"
             env = ['PYTHONUNBUFFERED=1', f"BINDS={','.join(map(str, binds))}", f"NODE_ID={key}_{idx}"]
+            if key not in ['gateway', 'model_downloader', 'rabbitmq', 'client']:
+                env.append(f"HEALTH_CHECK_ID={health_check_id_counter}")
+                health_check_id_counter += 1
+                if health_check_id_counter > HEALTH_CHECKERS:
+                    health_check_id_counter = 1
             if key == 'top_budget':
                 eof_count = SERVICE_INSTANCES.get('filter_one_prod', 0)
+                env.append(f"EOF={eof_count}")
+            if key == 'top_actors':
+                eof_count = SERVICE_INSTANCES.get('join_credits', 0)
                 env.append(f"EOF={eof_count}")
             depends = {'rabbitmq': {'condition': 'service_healthy'}}
             if key == 'filter_spain_argentina':
@@ -134,9 +156,9 @@ def generate_scaled_services():
                 for i in range(1, prev+1): depends[f'average_budget_{i}'] = {'condition': 'service_started'}
                 depends['model_downloader'] = {'condition': 'service_completed_successfully'}
                 env += ['CONSUMER_EXCHANGE=gateway_metadata', 'PUBLISHER_EXCHANGE=overview']
-            services[name] = {'build': {'context': '.', 'dockerfile': dockerfile}, 'restart': 'on-failure', 'depends_on': depends, 'environment': env}
+            services[name] = {'build': {'context': '.', 'dockerfile': dockerfile}, 'restart': 'on-failure', 'depends_on': depends, 'environment': env, 'volumes': [f'./volumes/{name}:/app/files']}
             if key == 'overview':
-                services[name].update({'links': ['rabbitmq'], 'volumes': ['./model_downloader/model_volume:/models'], 'healthcheck': {'test': ['CMD', 'test', '-f', '/tmp/model_ready'], 'interval': '5s', 'timeout': '3s', 'retries': 10, 'start_period': '15s'}})
+                services[name].update({'links': ['rabbitmq'], 'volumes': ['./model_downloader/model_volume:/models', f'./volumes/{name}:/app/files'], 'healthcheck': {'test': ['CMD', 'test', '-f', '/tmp/model_ready'], 'interval': '5s', 'timeout': '3s', 'retries': 10, 'start_period': '15s'}})
             if key == 'top_budget':
                 depends['aggregator_q2'] = {'condition': 'service_started'}
                 env += ['CONSUMER_EXCHANGE=filter_one_prod', 'PUBLISHER_EXCHANGE=top_budget']

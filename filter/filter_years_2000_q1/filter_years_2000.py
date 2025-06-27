@@ -11,6 +11,12 @@ class Filter2000s(Filter):
             genres = body_split[2]
             title = body_split[1]
             client = body_split[4]
+            message_id = body_split[5]
+
+
+            if not self.should_process(client):
+                return None, None
+
             row_str = f"Query 1 -> ID: {movie_id} - Title: {title} - Genres: {genres}{constants.SEPARATOR}{client}"
             return os.getenv("PUBLISHER_EXCHANGE", ""), row_str
         return None, None

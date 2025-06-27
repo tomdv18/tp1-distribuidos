@@ -1,0 +1,715 @@
+services:
+  rabbitmq:
+    build:
+      context: ./rabbitmq
+      dockerfile: rabbitmq.dockerfile
+    ports:
+      - 15672:15672
+    healthcheck:
+      test:
+        - CMD
+        - rabbitmqctl
+        - status
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/gateway.dockerfile
+    restart: on-failure
+    environment:
+      - PYTHONUNBUFFERED=1
+      - EOF=2
+    depends_on:
+      health_checker_1:
+        condition: service_started
+      # filter_spain_argentina_1:
+      #   condition: service_started
+      # filter_spain_argentina_2:
+      #   condition: service_started
+      # filter_one_prod_1:
+      #   condition: service_started
+      # filter_one_prod_2:
+      #   condition: service_started
+      filter_argentina_1:
+        condition: service_started
+      filter_argentina_2:
+        condition: service_started
+      filter_years_2000_q34_1:
+        condition: service_started
+      filter_years_2000_q34_2:
+        condition: service_started
+      join_ratings_1:
+        condition: service_started
+      join_ratings_2:
+        condition: service_started
+      join_credits_1:
+        condition: service_started
+      join_credits_2:
+        condition: service_started
+      # overview_1:
+      #   condition: service_healthy
+      # overview_2:
+      #   condition: service_healthy
+      # top_budget_1:
+      #   condition: service_started
+      # top_budget_2:
+      #   condition: service_started
+      top_rating_1:
+        condition: service_started
+      top_rating_2:
+        condition: service_started
+      top_actors_1:
+        condition: service_started
+      top_actors_2:
+        condition: service_started
+      # average_budget_1:
+      #   condition: service_started
+      # average_budget_2:
+      #   condition: service_started
+      rabbitmq:
+        condition: service_healthy
+  # model_downloader:
+  #   build:
+  #     context: ./model_downloader
+  #     dockerfile: model_downloader.dockerfile
+  #   volumes:
+  #   - ./model_downloader/model_volume:/models
+  # aggregator_q2:
+  #   build:
+  #     context: .
+  #     dockerfile: generic/aggregator_q2/generic.dockerfile
+  #   restart: on-failure
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   environment:
+  #   - PYTHONUNBUFFERED=1
+  #   - BINDS=0,1,2,3,4,5,6,7,8,9
+  #   - CONSUMER_EXCHANGE=top_budget
+  #   - PUBLISHER_EXCHANGE=results
+  #   - NODE_ID=aggregator_q2
+  #   - HEALTH_CHECK_ID=1
+  #   volumes:
+  #   - ./volumes/aggregator_q2:/app/files
+  aggregator_q3:
+    build:
+      context: .
+      dockerfile: generic/aggregator_q3/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=0,1,2,3,4,5,6,7,8,9
+      - CONSUMER_EXCHANGE=top_rating
+      - PUBLISHER_EXCHANGE=results
+      - NODE_ID=aggregator_q3
+      - HEALTH_CHECK_ID=1
+    volumes:
+      - ./volumes/aggregator_q3:/app/files
+  aggregator_q4:
+    build:
+      context: .
+      dockerfile: generic/aggregator_q4/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=0,1,2,3,4,5,6,7,8,9
+      - CONSUMER_EXCHANGE=top_actors
+      - PUBLISHER_EXCHANGE=results
+      - NODE_ID=aggregator_q4
+      - HEALTH_CHECK_ID=1
+    volumes:
+      - ./volumes/aggregator_q4:/app/files
+  # aggregator_q5:
+  #  build:
+  #    context: .
+  #    dockerfile: generic/aggregator_q5/generic.dockerfile
+  #  restart: on-failure
+  #  depends_on:
+  #    rabbitmq:
+  #      condition: service_healthy
+  #  environment:
+  #  - PYTHONUNBUFFERED=1
+  #  - BINDS=0,1,2,3,4,5,6,7,8,9
+  #  - CONSUMER_EXCHANGE=average_budget
+  #  - PUBLISHER_EXCHANGE=results
+  #  - NODE_ID=aggregator_q5
+  #  - HEALTH_CHECK_ID=1
+  #  volumes:
+  #  - ./volumes/aggregator_q5:/app/files
+  health_checker_1:
+    build:
+      context: .
+      dockerfile: health_checker/health_checker.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8000
+      - ID=1
+      - HC_SIZE=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  client_1:
+    build:
+      context: .
+      dockerfile: client/client.dockerfile
+    depends_on:
+      gateway:
+        condition: service_started
+    volumes:
+      - ./client/files:/app/files
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MOVIES_FILE=movies_metadata.csv
+      - RATINGS_FILE=ratings_39999.csv
+      - CREDITS_FILE=credits.csv
+  #client_2:
+  #  build:
+  #    context: .
+  #    dockerfile: client/client.dockerfile
+  #  depends_on:
+  #    gateway:
+  #      condition: service_started
+  #  volumes:
+  #  - ./client/files:/app/files
+  #  environment:
+  #  - PYTHONUNBUFFERED=1
+  #  - MOVIES_FILE=movies_metadata100.csv
+  #  - RATINGS_FILE=ratings10.csv
+  #  - CREDITS_FILE=vacio.csv
+  # filter_spain_argentina_1:
+  #   build:
+  #     context: .
+  #     dockerfile: filter/filter_spain_argentina/filter.dockerfile
+  #   restart: on-failure
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     filter_years_2000_q1_1:
+  #       condition: service_started
+  #     filter_years_2000_q1_2:
+  #       condition: service_started
+  #   environment:
+  #   - PYTHONUNBUFFERED=1
+  #   - BINDS=0,1,2,3,4
+  #   - NODE_ID=filter_spain_argentina_1
+  #   - HEALTH_CHECK_ID=1
+  #   - CONSUMER_EXCHANGE=gateway_metadata
+  #   - PUBLISHER_EXCHANGE=filter_spain_argentina
+  #   volumes:
+  #     - ./volumes/filter_spain_argentina_1:/app/files
+  # filter_spain_argentina_2:
+  #   build:
+  #     context: .
+  #     dockerfile: filter/filter_spain_argentina/filter.dockerfile
+  #   restart: on-failure
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     filter_years_2000_q1_1:
+  #       condition: service_started
+  #     filter_years_2000_q1_2:
+  #       condition: service_started
+  #   environment:
+  #   - PYTHONUNBUFFERED=1
+  #   - BINDS=5,6,7,8,9
+  #   - NODE_ID=filter_spain_argentina_2
+  #   - HEALTH_CHECK_ID=1
+  #   - CONSUMER_EXCHANGE=gateway_metadata
+  #   - PUBLISHER_EXCHANGE=filter_spain_argentina
+  #   volumes:
+  #     - ./volumes/filter_spain_argentina_2:/app/files
+  # filter_years_2000_q1_1:
+  #   build:
+  #     context: .
+  #     dockerfile: filter/filter_years_2000_q1/filter.dockerfile
+  #   restart: on-failure
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   environment:
+  #   - PYTHONUNBUFFERED=1
+  #   - BINDS=0,1,2,3,4
+  #   - NODE_ID=filter_years_2000_q1_1
+  #   - HEALTH_CHECK_ID=1
+  #   - CONSUMER_EXCHANGE=filter_spain_argentina
+  #   - PUBLISHER_EXCHANGE=results
+  #   volumes:
+  #   - ./volumes/filter_years_2000_q1_1:/app/files
+  # filter_years_2000_q1_2:
+  #   build:
+  #     context: .
+  #     dockerfile: filter/filter_years_2000_q1/filter.dockerfile
+  #   restart: on-failure
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   environment:
+  #   - PYTHONUNBUFFERED=1
+  #   - BINDS=5,6,7,8,9
+  #   - NODE_ID=filter_years_2000_q1_2
+  #   - HEALTH_CHECK_ID=1
+  #   - CONSUMER_EXCHANGE=filter_spain_argentina
+  #   - PUBLISHER_EXCHANGE=results
+  #   volumes:
+  #   - ./volumes/filter_years_2000_q1_2:/app/files
+  # filter_one_prod_1:
+  #   build:
+  #     context: .
+  #     dockerfile: filter/filter_one_prod/filter.dockerfile
+  #   restart: on-failure
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     top_budget_1:
+  #       condition: service_started
+  #     top_budget_2:
+  #       condition: service_started
+  #   environment:
+  #   - PYTHONUNBUFFERED=1
+  #   - BINDS=0,1,2,3,4
+  #   - NODE_ID=filter_one_prod_1
+  #   - HEALTH_CHECK_ID=1
+  #   - CONSUMER_EXCHANGE=gateway_metadata
+  #   - PUBLISHER_EXCHANGE=filter_one_prod
+  #   volumes:
+  #   - ./volumes/filter_one_prod_1:/app/files
+  # filter_one_prod_2:
+  #   build:
+  #     context: .
+  #     dockerfile: filter/filter_one_prod/filter.dockerfile
+  #   restart: on-failure
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     top_budget_1:
+  #       condition: service_started
+  #     top_budget_2:
+  #       condition: service_started
+  #   environment:
+  #   - PYTHONUNBUFFERED=1
+  #   - BINDS=5,6,7,8,9
+  #   - NODE_ID=filter_one_prod_2
+  #   - HEALTH_CHECK_ID=1
+  #   - CONSUMER_EXCHANGE=gateway_metadata
+  #   - PUBLISHER_EXCHANGE=filter_one_prod
+  #   volumes:
+  #   - ./volumes/filter_one_prod_2:/app/files
+  filter_argentina_1:
+    build:
+      context: .
+      dockerfile: filter/filter_argentina/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      filter_years_2000_q34_1:
+        condition: service_started
+      filter_years_2000_q34_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=0,1,2,3,4
+      - NODE_ID=filter_argentina_1
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE=gateway_metadata
+      - PUBLISHER_EXCHANGE=filter_argentina
+    volumes:
+      - ./volumes/filter_argentina_1:/app/files
+  filter_argentina_2:
+    build:
+      context: .
+      dockerfile: filter/filter_argentina/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      filter_years_2000_q34_1:
+        condition: service_started
+      filter_years_2000_q34_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=5,6,7,8,9
+      - NODE_ID=filter_argentina_2
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE=gateway_metadata
+      - PUBLISHER_EXCHANGE=filter_argentina
+    volumes:
+      - ./volumes/filter_argentina_2:/app/files
+  filter_years_2000_q34_1:
+    build:
+      context: .
+      dockerfile: filter/filter_years_2000_q34/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      join_ratings_1:
+        condition: service_started
+      join_ratings_2:
+        condition: service_started
+      join_credits_1:
+        condition: service_started
+      join_credits_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=0,1,2,3,4
+      - NODE_ID=filter_years_2000_q34_1
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE=filter_argentina
+      - PUBLISHER_EXCHANGE=filter_years_2000_q34
+    volumes:
+      - ./volumes/filter_years_2000_q34_1:/app/files
+  filter_years_2000_q34_2:
+    build:
+      context: .
+      dockerfile: filter/filter_years_2000_q34/filter.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      join_ratings_1:
+        condition: service_started
+      join_ratings_2:
+        condition: service_started
+      join_credits_1:
+        condition: service_started
+      join_credits_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=5,6,7,8,9
+      - NODE_ID=filter_years_2000_q34_2
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE=filter_argentina
+      - PUBLISHER_EXCHANGE=filter_years_2000_q34
+    volumes:
+      - ./volumes/filter_years_2000_q34_2:/app/files
+  join_ratings_1:
+    build:
+      context: .
+      dockerfile: join/join_ratings/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_rating_1:
+        condition: service_started
+      top_rating_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=0,1,2,3,4
+      - NODE_ID=join_ratings_1
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+      - CONSUMER_EXCHANGE_JOINED=gateway_ratings
+      - PUBLISHER_EXCHANGE=join_ratings
+    volumes:
+      - ./volumes/join_ratings_1:/app/files
+  join_ratings_2:
+    build:
+      context: .
+      dockerfile: join/join_ratings/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_rating_1:
+        condition: service_started
+      top_rating_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=5,6,7,8,9
+      - NODE_ID=join_ratings_2
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+      - CONSUMER_EXCHANGE_JOINED=gateway_ratings
+      - PUBLISHER_EXCHANGE=join_ratings
+    volumes:
+      - ./volumes/join_ratings_2:/app/files
+  join_credits_1:
+    build:
+      context: .
+      dockerfile: join/join_credits/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_actors_1:
+        condition: service_started
+      top_actors_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=0,1,2,3,4
+      - NODE_ID=join_credits_1
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+      - CONSUMER_EXCHANGE_JOINED=gateway_credits
+      - PUBLISHER_EXCHANGE=join_credits
+    volumes:
+      - ./volumes/join_credits_1:/app/files
+  join_credits_2:
+    build:
+      context: .
+      dockerfile: join/join_credits/join.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      top_actors_1:
+        condition: service_started
+      top_actors_2:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=5,6,7,8,9
+      - NODE_ID=join_credits_2
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE_METADATA=filter_years_2000_q34
+      - CONSUMER_EXCHANGE_JOINED=gateway_credits
+      - PUBLISHER_EXCHANGE=join_credits
+    volumes:
+      - ./volumes/join_credits_2:/app/files
+  # overview_1:
+  #  build:
+  #    context: .
+  #    dockerfile: generic/overview_processor/generic.dockerfile
+  #  restart: on-failure
+  #  depends_on:
+  #    rabbitmq:
+  #      condition: service_healthy
+  #    average_budget_1:
+  #      condition: service_started
+  #    average_budget_2:
+  #      condition: service_started
+  #    model_downloader:
+  #      condition: service_completed_successfully
+  #  environment:
+  #  - PYTHONUNBUFFERED=1
+  #  - BINDS=0,1,2,3,4
+  #  - NODE_ID=overview_1
+  #  - HEALTH_CHECK_ID=1
+  #  - CONSUMER_EXCHANGE=gateway_metadata
+  #  - PUBLISHER_EXCHANGE=overview
+  #  links:
+  #  - rabbitmq
+  #  volumes:
+  #  - ./model_downloader/model_volume:/models
+  #  - ./volumes/overview_1:/app/files
+  #  healthcheck:
+  #    test:
+  #    - CMD
+  #    - test
+  #    - -f
+  #    - /tmp/model_ready
+  #    interval: 5s
+  #    timeout: 3s
+  #    retries: 10
+  #    start_period: 15s
+  # overview_2:
+  #  build:
+  #    context: .
+  #    dockerfile: generic/overview_processor/generic.dockerfile
+  #  restart: on-failure
+  #  depends_on:
+  #    rabbitmq:
+  #      condition: service_healthy
+  #    average_budget_1:
+  #      condition: service_started
+  #    average_budget_2:
+  #      condition: service_started
+  #    model_downloader:
+  #      condition: service_completed_successfully
+  #  environment:
+  #  - PYTHONUNBUFFERED=1
+  #  - BINDS=5,6,7,8,9
+  #  - NODE_ID=overview_2
+  #  - HEALTH_CHECK_ID=1
+  #  - CONSUMER_EXCHANGE=gateway_metadata
+  #  - PUBLISHER_EXCHANGE=overview
+  #  links:
+  #  - rabbitmq
+  #  volumes:
+  #  - ./model_downloader/model_volume:/models
+  #  - ./volumes/overview_2:/app/files
+  #  healthcheck:
+  #    test:
+  #    - CMD
+  #    - test
+  #    - -f
+  #    - /tmp/model_ready
+  #    interval: 5s
+  #    timeout: 3s
+  #    retries: 10
+  #    start_period: 15s
+  # top_budget_1:
+  #   build:
+  #     context: .
+  #     dockerfile: generic/top_budget/generic.dockerfile
+  #   restart: on-failure
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     aggregator_q2:
+  #       condition: service_started
+  #   environment:
+  #   - PYTHONUNBUFFERED=1
+  #   - BINDS=0,1,2,3,4
+  #   - NODE_ID=top_budget_1
+  #   - HEALTH_CHECK_ID=1
+  #   - EOF=2
+  #   - CONSUMER_EXCHANGE=filter_one_prod
+  #   - PUBLISHER_EXCHANGE=top_budget
+  #   volumes:
+  #   - ./volumes/top_budget_1:/app/files
+  # top_budget_2:
+  #   build:
+  #     context: .
+  #     dockerfile: generic/top_budget/generic.dockerfile
+  #   restart: on-failure
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     aggregator_q2:
+  #       condition: service_started
+  #   environment:
+  #   - PYTHONUNBUFFERED=1
+  #   - BINDS=5,6,7,8,9
+  #   - NODE_ID=top_budget_2
+  #   - HEALTH_CHECK_ID=1
+  #   - EOF=2
+  #   - CONSUMER_EXCHANGE=filter_one_prod
+  #   - PUBLISHER_EXCHANGE=top_budget
+  #   volumes:
+  #   - ./volumes/top_budget_2:/app/files
+  top_rating_1:
+    build:
+      context: .
+      dockerfile: generic/top_rating/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q3:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=0,1,2,3,4
+      - NODE_ID=top_rating_1
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE=join_ratings
+      - PUBLISHER_EXCHANGE=top_rating
+    volumes:
+      - ./volumes/top_rating_1:/app/files
+  top_rating_2:
+    build:
+      context: .
+      dockerfile: generic/top_rating/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q3:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=5,6,7,8,9
+      - NODE_ID=top_rating_2
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE=join_ratings
+      - PUBLISHER_EXCHANGE=top_rating
+    volumes:
+      - ./volumes/top_rating_2:/app/files
+  top_actors_1:
+    build:
+      context: .
+      dockerfile: generic/top_actors/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q4:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=0,1,2,3,4
+      - NODE_ID=top_actors_1
+      - EOF=2
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE=join_credits
+      - PUBLISHER_EXCHANGE=top_actors
+    volumes:
+      - ./volumes/top_actors_1:/app/files
+  top_actors_2:
+    build:
+      context: .
+      dockerfile: generic/top_actors/generic.dockerfile
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      aggregator_q4:
+        condition: service_started
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BINDS=5,6,7,8,9
+      - NODE_ID=top_actors_2
+      - EOF=2
+      - HEALTH_CHECK_ID=1
+      - CONSUMER_EXCHANGE=join_credits
+      - PUBLISHER_EXCHANGE=top_actors
+    volumes:
+      - ./volumes/top_actors_2:/app/files
+  # average_budget_1:
+  #  build:
+  #    context: .
+  #    dockerfile: generic/average_budget/generic.dockerfile
+  #  restart: on-failure
+  #  depends_on:
+  #    rabbitmq:
+  #      condition: service_healthy
+  #    aggregator_q5:
+  #      condition: service_started
+  #  environment:
+  #  - PYTHONUNBUFFERED=1
+  #  - BINDS=0,1,2,3,4
+  #  - NODE_ID=average_budget_1
+  #  - HEALTH_CHECK_ID=1
+  #  - CONSUMER_EXCHANGE=overview
+  #  - PUBLISHER_EXCHANGE=average_budget
+  #  volumes:
+  #  - ./volumes/average_budget_1:/app/files
+  # average_budget_2:
+  #  build:
+  #    context: .
+  #    dockerfile: generic/average_budget/generic.dockerfile
+  #  restart: on-failure
+  #  depends_on:
+  #    rabbitmq:
+  #      condition: service_healthy
+  #    aggregator_q5:
+  #      condition: service_started
+  #  environment:
+  #  - PYTHONUNBUFFERED=1
+  #  - BINDS=5,6,7,8,9
+  #  - NODE_ID=average_budget_2
+  #  - HEALTH_CHECK_ID=1
+  #  - CONSUMER_EXCHANGE=overview
+  #  - PUBLISHER_EXCHANGE=average_budget
+  #  volumes:
+  #  - ./volumes/average_budget_2:/app/files

@@ -2,3 +2,4 @@ data
 *.csv
 model_downloader/model_volume/
 res*
+volumes/

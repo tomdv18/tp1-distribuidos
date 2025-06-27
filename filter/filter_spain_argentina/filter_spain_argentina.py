@@ -11,8 +11,13 @@ class FilterSpainArgentina(Filter):
             release_date = body_split[5]
             title = body_split[7]
             client = body_split[8]
+            message_id = body_split[9]
+
+
+            if not self.should_process(client):
+                return None, None
         
-            row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{release_date}{constants.SEPARATOR}{client}"
+            row_str = f"{movie_id}{constants.SEPARATOR}{title}{constants.SEPARATOR}{genres}{constants.SEPARATOR}{release_date}{constants.SEPARATOR}{client}{constants.SEPARATOR}{message_id}{constants.SEPARATOR}{self.node_instance.id()}"
             return str(movie_id[-1]), row_str
         return None, None
 
